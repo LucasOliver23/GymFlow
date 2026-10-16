@@ -25,6 +25,8 @@ manifest.json, sw.js, icons/   PWA instalável e offline
 firestore.rules      Regras de segurança do Firestore
 vercel.json          Cabeçalhos para o deploy
 Abrir_GymFlow.bat    Abre o app no Windows com dois cliques
+package.json, scripts/preparar-android.mjs, android-recursos/   Geração do APK (Capacitor)
+.github/workflows/apk.yml   APK automático no GitHub Actions
 ```
 
 ## Rodar no Windows
@@ -39,15 +41,36 @@ Sem Firebase configurado, o app roda em **modo local**: tudo fica salvo só naqu
 2. **Authentication → Método de login →** ative **E-mail/senha**.
 3. **Firestore Database →** crie o banco (modo produção). Na aba **Regras**, cole o conteúdo de `firestore.rules` e publique.
 4. **Configurações do projeto → Seus apps → Web (</>)** → registre o app e copie os valores para `firebase-config.js`.
-5. Em **Authentication → Configurações → Domínios autorizados**, adicione o domínio do Vercel (ex.: `gymflow.vercel.app`). `localhost` já vem autorizado.
+5. Em **Authentication → Configurações → Domínios autorizados**, adicione o domínio do Vercel (ex.: `gymflow.vercel.app`). `localhost` já vem autorizado (é o endereço interno do APK no modo embutido).
 
 Os dados de cada usuário ficam em `users/{uid}` (perfil, metas, fichas, pesos, medidas, alimentos e exercícios próprios) com as subcoleções `dias` (diário alimentar e água), `sessoes` (treinos) e `fotos`. O navegador guarda só uma cópia de cache, e o Firestore funciona offline e sincroniza quando a internet volta.
 
-## Publicar no Vercel e gerar o APK
+## APK Android automático (GitHub Actions)
 
-1. Em [vercel.com/new](https://vercel.com/new), importe o repositório `GymFlow` (Framework: **Other**, sem build).
-2. **Depois de qualquer mudança nos arquivos**, faça o push e confira se o deploy do Vercel terminou **antes** de gerar o APK.
-3. APK: em [pwabuilder.com](https://www.pwabuilder.com), cole a URL do Vercel → **Package for stores → Android**.
+O APK **não** é feito à mão: o workflow `.github/workflows/apk.yml` gera tudo sozinho com Capacitor.
+
+| Quando | O que acontece |
+|---|---|
+| Pull request | Compila o APK e anexa na execução (aba **Actions → APK Android → Artifacts**) para testar antes de juntar |
+| Push na `main` | Compila e publica uma versão nova em **Releases** (`v1.0.N`, arquivo `GymFlow.apk`) |
+| App instalado | Mostra "Nova versão do app" na tela Hoje e baixa a atualização com um toque |
+
+Link fixo da última versão: `https://github.com/LucasOliver23/GymFlow/releases/latest/download/GymFlow.apk`
+(também aparece em *Perfil → Baixar app Android* na versão web).
+
+### Configuração única
+
+1. **Chave fixa de assinatura** (sem ela, o Android não aceita instalar uma versão por cima da outra):
+   em *Settings → Secrets and variables → Actions → Secrets*, crie `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_SENHA`,
+   `ANDROID_KEY_ALIAS` e `ANDROID_KEY_SENHA`. Guarde o arquivo `.jks` num lugar seguro: se perder a chave, as próximas versões só instalam depois de desinstalar a antiga.
+2. **Atualização instantânea (recomendado):** publique no Vercel ([vercel.com/new](https://vercel.com/new), importe o repositório, Framework **Other**, sem build)
+   e crie a *Variable* `APP_URL` com o endereço (ex.: `https://gymflow.vercel.app`). A partir do próximo APK, o app abre o site:
+   cada deploy do Vercel atualiza o app na hora, sem reinstalar. Sem `APP_URL`, os arquivos vão dentro do APK e cada atualização é um APK novo.
+
+### Recursos só do app Android
+Botão voltar fecha janelas e volta para Hoje, notificação de fim do descanso com a tela desligada, Excel e backup abrem o menu de compartilhar (WhatsApp, Drive, Arquivos).
+
+Para gerar o projeto Android no PC (precisa do Android Studio): `npm install` e depois `npm run android`; o projeto fica em `android/`.
 
 ## Fontes e fórmulas
 

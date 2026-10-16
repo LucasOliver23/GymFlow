@@ -306,10 +306,25 @@ function toast(msg, ms = 2600) {
   const t = $('#toast'); t.textContent = msg; t.classList.add('on');
   clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), ms);
 }
-function baixar(blob, nome) {
+async function baixar(blob, nome) {
+  if (NATIVO && PLUG.Filesystem && PLUG.Share) { // No APK o WebView não baixa arquivos: salva e abre o menu de compartilhar
+    try {
+      const b64 = await new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1]); r.onerror = erro; r.readAsDataURL(blob); });
+      const { uri } = await PLUG.Filesystem.writeFile({ path: nome, data: b64, directory: 'CACHE' });
+      await PLUG.Share.share({ title: nome, url: uri, dialogTitle: 'Salvar ou enviar ' + nome });
+    } catch (e) { if (!/cancel/i.test(String(e && e.message))) toast('Não foi possível salvar o arquivo.'); }
+    return;
+  }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome;
   document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
 }
+
+// ---------- App Android (Capacitor) ----------
+const NATIVO = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const PLUG = NATIVO ? (window.Capacitor.Plugins || {}) : {};
+const REPO = 'LucasOliver23/GymFlow';
+const LINK_APK = `https://github.com/${REPO}/releases/latest/download/GymFlow.apk`;
+let ATUALIZACAO = null, VERSAO_APP = '1.0';
 
 // ---------- Ícones (SVG inline) ----------
 const P = {
@@ -899,7 +914,7 @@ function cardCalorias(t, m, titulo, acao) {
 }
 function vHoje() {
   const m = metas(), t = totais(DIA), d = D[DIA] || { agua: 0, supl: {} };
-  return semanaHTML()
+  return cardAtualizacao() + semanaHTML()
     + cardCalorias(t, m, tituloData(DIA), `<button class="link" data-act="ir" data-v="perfil">Editar</button>`)
     + cardTreinoDia()
     + cardAgua(d, m)
@@ -907,6 +922,10 @@ function vHoje() {
     + `<div class="sec-h"><h3>Refeições</h3><button class="icone-btn" data-act="ir" data-v="dieta" aria-label="Abrir dieta">${ic('pontos', 20)}</button></div>`
     + listaRefeicoes(t, m, true)
     + cardPesoMini();
+}
+function cardAtualizacao() {
+  if (!ATUALIZACAO) return '';
+  return `<div class="card" style="border-color:rgba(10,132,255,.5)"><div class="row sb"><div class="grow"><div class="lbl blue">${ic('download', 14)} Nova versão do app</div><b>GymFlow ${esc(ATUALIZACAO.versao)}</b><div class="small sub">Baixe e toque em Instalar. Seus dados continuam salvos.</div></div><button class="btn peq" style="background:var(--blue);color:#fff" data-act="atualizarApp">Atualizar</button></div></div>`;
 }
 function cardTreinoDia() {
   const ses = sessoesDoDia(DIA);
@@ -1264,6 +1283,7 @@ function iniciarSessao(fichaId) {
     ex: f.itens.map(it => novoExSessao(it.ex, it)),
   };
   salvarSA(); fecharTodas(); abrirSessao(); render();
+  permissaoNotificacao();
 }
 function novoExSessao(exId, it = {}) {
   const ant = ultimaExec(exId), n = Number(it.series) || 3, cardio = ehCardio(exId);
@@ -1356,7 +1376,7 @@ function tickDescanso() {
 }
 function pararDescanso(silencioso) {
   if (!RT) return;
-  clearInterval(RT.int); const ir = RT.irPara; RT = null;
+  clearInterval(RT.int); const ir = RT.irPara; RT = null; cancelarAvisoDescanso();
   $('#descanso').classList.add('hidden'); $('#descanso').innerHTML = '';
   if (!silencioso && ir != null && SA) { SA.idx = ir; salvarSA(); desenharSessao(); }
 }
@@ -1558,11 +1578,12 @@ function vPerfil() {
     <button class="item" style="width:100%" data-act="exportarExcel">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Exportar para Excel</div><div class="d">Peso, medidas, diário alimentar, treinos e fichas</div></div></button>
     <button class="item" style="width:100%" data-act="backup">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar backup (.json)</div><div class="d">Cópia completa dos seus dados</div></div></button>
     <button class="item" style="width:100%" data-act="restaurar">${ic('upload', 20)}<div class="grow" style="text-align:left"><div class="t">Restaurar backup</div><div class="d">Substitui os dados atuais</div></div></button>
+    ${!NATIVO ? `<a class="item" style="width:100%;color:inherit;text-decoration:none" href="${LINK_APK}">${ic('instalar', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar app Android (APK)</div><div class="d">Versão mais recente, gerada automaticamente pelo GitHub</div></div></a>` : ''}
     ${INSTALAR ? `<button class="item" style="width:100%" data-act="instalar">${ic('instalar', 20)}<div class="grow" style="text-align:left"><div class="t">Instalar o app</div><div class="d">Ícone na tela inicial, abre em tela cheia</div></div></button>` : ''}
   </div>
   <div class="card small sub"><div class="row" style="align-items:flex-start">${ic('info', 18)}<div><b style="color:var(--txt)">Fontes e fórmulas</b><br>Alimentos: Tabela Brasileira de Composição de Alimentos (TACO, 4ª ed., NEPA/UNICAMP) e Open Food Facts (código de barras). Metabolismo: Mifflin-St Jeor. Força: 1RM de Epley. % de gordura: Marinha dos EUA. IMC: classificação da OMS. Estimativas não substituem nutricionista, médico ou educador físico.</div></div></div>
   <button class="btn perigo bl mt" data-act="sair">${ic('sair', 18)} ${MODO_NUVEM ? 'Sair da conta' : 'Sair do modo local'}</button>
-  <p class="tiny mut c mt2">GymFlow v1.0</p>`;
+  <p class="tiny mut c mt2">GymFlow ${esc(VERSAO_APP)}${NATIVO ? ' · app Android' : ''}</p>`;
 }
 function abrirEditarPerfil() {
   const st = clone(S.perfil);
@@ -1986,6 +2007,7 @@ const A = {
   apagarSupl: async ds => { if (!(await confirmar('Apagar este suplemento?', 'Apagar'))) return; S.suplementos = S.suplementos.filter(x => x.id !== ds.id); salvar('main'); fecharSheet(); redesenharSheet(); render(); },
   config: () => abrirConfig(),
   cfgToggle: ds => { S.config[ds.k] = !S.config[ds.k]; salvar('main'); redesenharSheet(); render(); },
+  atualizarApp: () => { if (ATUALIZACAO) location.href = ATUALIZACAO.url; },
   exportarExcel: () => exportarExcel(),
   backup: () => baixarBackup(),
   restaurar: () => $('#arquivo-backup').click(),
@@ -2049,11 +2071,62 @@ $('#arquivo-foto').addEventListener('change', async e => {
 });
 $('#arquivo-backup').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (f) restaurarBackup(f); });
 
+// ======================= APP ANDROID =======================
+async function permissaoNotificacao() {
+  const LN = PLUG.LocalNotifications; if (!LN) return false;
+  try { let p = await LN.checkPermissions(); if (p.display === 'prompt' || p.display === 'prompt-with-rationale') p = await LN.requestPermissions(); return p.display === 'granted'; } catch (e) { return false; }
+}
+// Com a tela desligada o cronômetro do WebView para: agenda uma notificação para o fim do descanso
+async function agendarAvisoDescanso() {
+  const LN = PLUG.LocalNotifications; if (!LN || !RT || RT.fim - Date.now() < 2000) return;
+  if (!(await permissaoNotificacao())) return;
+  try { await LN.schedule({ notifications: [{ id: 7001, title: 'Descanso acabou ⏱', body: 'Bora para a próxima série 💪', schedule: { at: new Date(RT.fim), allowWhileIdle: true } }] }); } catch (e) { }
+}
+function cancelarAvisoDescanso() { const LN = PLUG.LocalNotifications; if (LN) LN.cancel({ notifications: [{ id: 7001 }] }).catch(() => { }); }
+// Aviso de APK novo (modo embutido). No modo online (APP_URL) o conteúdo já atualiza sozinho a cada deploy.
+async function verificarAtualizacao() {
+  if (!NATIVO || !PLUG.App) return;
+  try {
+    const info = await PLUG.App.getInfo(); VERSAO_APP = info.version;
+    if (location.hostname !== 'localhost') return;
+    let rel = null; try { rel = JSON.parse(localStorage.getItem('gf_upd') || 'null'); } catch (e) { }
+    if (!rel || Date.now() - rel.ts > 3 * 3600e3) {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
+      if (!r.ok) return;
+      const j = await r.json(), apk = (j.assets || []).find(a => /\.apk$/i.test(a.name));
+      rel = { ts: Date.now(), tag: j.tag_name, url: apk ? apk.browser_download_url : j.html_url };
+      localStorage.setItem('gf_upd', JSON.stringify(rel));
+    }
+    const nova = parseInt(String(rel.tag).split('.').pop(), 10), atual = parseInt(info.build, 10);
+    const antes = !!ATUALIZACAO;
+    ATUALIZACAO = nova > atual ? { versao: String(rel.tag).replace(/^v/, ''), url: rel.url } : null;
+    if (!!ATUALIZACAO !== antes && S && S.perfil) render();
+  } catch (e) { }
+}
+function configurarNativo() {
+  if (!NATIVO) return;
+  document.documentElement.classList.add('nativo');
+  const App = PLUG.App;
+  if (App) {
+    App.addListener('backButton', () => {
+      if (PILHA.length) return fecharSheet();
+      if (!$('#full').classList.contains('hidden')) return fecharSessaoTela();
+      if (OB && OB.passo > 0) return A.obVoltar();
+      if (S && S.perfil && !$('#app').classList.contains('hidden') && VIEW !== 'hoje') { VIEW = 'hoje'; render(); window.scrollTo(0, 0); return; }
+      App.minimizeApp ? App.minimizeApp() : App.exitApp();
+    });
+    App.addListener('pause', () => { agendarAvisoDescanso(); });
+    App.addListener('resume', () => { cancelarAvisoDescanso(); if (RT) tickDescanso(); verificarAtualizacao(); });
+  }
+  verificarAtualizacao();
+}
+
 // ======================= INICIALIZAÇÃO =======================
 let INSTALAR = null, NOME_CADASTRO = '';
 window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); INSTALAR = e; if (VIEW === 'perfil' && S) render(); });
 function carregarScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Falha ao carregar ' + src)); document.head.appendChild(s); }); }
 async function iniciar() {
+  configurarNativo();
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
   if (!MODO_NUVEM) {
     if (localStorage.getItem('gf_local_ativo')) await A.entrarLocal(); else mostrarAuth();

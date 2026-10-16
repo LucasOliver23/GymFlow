@@ -3,3 +3,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+
+# Gerados pelo scripts/preparar-android.mjs (o GitHub Actions recria a cada build)
+android/
+www/
+capacitor.config.json
+*.apk
+*.jks
+*.keystore
