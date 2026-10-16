@@ -1,0 +1,102 @@
+# Gera o APK Android do GymFlow automaticamente.
+# - Pull request: compila e anexa o APK ao resumo da execução (aba Actions) para testar.
+# - Push na main: compila e publica uma nova versão em Releases (GymFlow.apk).
+#   O app instalado avisa quando existe versão nova.
+#
+# Configuração (Settings > Secrets and variables > Actions):
+#   Secrets   ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_SENHA, ANDROID_KEY_ALIAS, ANDROID_KEY_SENHA
+#             Chave fixa de assinatura. Sem ela, cada APK sai com uma chave diferente e o
+#             Android não deixa atualizar por cima (precisa desinstalar antes).
+#   Variable  APP_URL (opcional) = endereço do Vercel, ex.: https://gymflow.vercel.app
+#             Com ela, o APK abre o site e cada deploy atualiza o app na hora.
+name: APK Android
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: Gerar APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_URL: ${{ vars.APP_URL }}
+      VERSAO: 1.0.${{ github.run_number }}
+      VERSION_CODE: ${{ github.run_number }}
+      TEM_CHAVE: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar dependências
+        run: npm ci --no-audit --no-fund
+
+      - name: Montar projeto Android (Capacitor)
+        run: npm run android
+
+      - name: Compilar APK assinado
+        if: env.TEM_CHAVE == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_SENHA: ${{ secrets.ANDROID_KEYSTORE_SENHA }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_SENHA: ${{ secrets.ANDROID_KEY_SENHA }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/gymflow.jks"
+          (cd android && ./gradlew assembleRelease --no-daemon --stacktrace)
+          BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/alinhado.apk"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/gymflow.jks" --ks-pass env:ANDROID_KEYSTORE_SENHA \
+            --ks-key-alias "$ANDROID_KEY_ALIAS" --key-pass env:ANDROID_KEY_SENHA \
+            --out GymFlow.apk "$RUNNER_TEMP/alinhado.apk"
+          "$BT/apksigner" verify --print-certs GymFlow.apk | head -3
+          rm -f "$RUNNER_TEMP/gymflow.jks"
+
+      - name: Compilar APK (sem chave fixa)
+        if: env.TEM_CHAVE != 'true'
+        run: |
+          echo "::warning title=APK sem chave fixa::Configure os secrets ANDROID_KEYSTORE_* para poder atualizar o app por cima sem desinstalar."
+          (cd android && ./gradlew assembleDebug --no-daemon --stacktrace)
+          cp android/app/build/outputs/apk/debug/app-debug.apk GymFlow.apk
+
+      - name: Anexar APK à execução
+        uses: actions/upload-artifact@v4
+        with:
+          name: GymFlow-${{ env.VERSAO }}
+          path: GymFlow.apk
+          retention-days: 14
+
+      - name: Publicar versão em Releases
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSAO }}
+          name: GymFlow ${{ env.VERSAO }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          files: GymFlow.apk
+          body: |
+            **Instalar:** baixe o `GymFlow.apk` abaixo no celular e toque em Instalar (permita "instalar apps desconhecidos" se o Android pedir).
+
+            Commit: ${{ github.sha }}
+            ${{ env.APP_URL != '' && format('Modo online: o app abre {0} e se atualiza a cada deploy do Vercel.', env.APP_URL) || 'Modo embutido: o app avisa quando houver uma versão nova aqui.' }}
+            ${{ env.TEM_CHAVE != 'true' && '⚠️ APK sem chave fixa: para instalar esta versão por cima da anterior, desinstale a antiga antes (os dados na nuvem continuam salvos).' || '' }}
