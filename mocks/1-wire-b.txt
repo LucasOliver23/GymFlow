@@ -1,0 +1,45 @@
++----------------------------------------------------+
+| nav                                                |
+| [h2: GYMFLOW]                     [av:] [ico:menu] |
++----------------------------------------------------+
+| hero                                               |
+| [t3: TERCA - 19 OUT]                               |
+| [h1: DIA DE]                                       |
+| [h1: PEITO.]                                       |
+| +----------------------------------------------+   |
+| | media                                        |   |
+| | [img: mapa do corpo 3D, peito e triceps      |   |
+| |       acesos em neon]                        |   |
+| +----------------------------------------------+   |
+| [t2: 7 exercicios - 22 series - 41 min]            |
+| [btn: [ico:play] BORA TREINAR]                     |
++----------------------------------------------------+
+| card                                               |
+| [ico:streak] [h2: 12] [t2: dias seguidos]          |
+| [chart: barra semanal com chama em cada dia feito] |
++----------------------------------------------------+
+| card2                                              |
+| [t3: COMBUSTIVEL]                                  |
+| [h2: 1.640] [t2: kcal restantes]                   |
+| [chart: barra horizontal grossa carbo-prot-gord]   |
+| [t3: C 120g] [t3: P 98g] [t3: G 41g]               |
++----------------------------------------------------+
+| rail                                               |
+| [t3: REFEICOES]                 [lnk: deslize >]   |
+| +-----------------+ +-----------------+ +--------+ |
+| | card3           | | card3           | | card3  | |
+| | [img: foto prato]| | [img: foto prato]| | [img:]| |
+| | [h3: Cafe]      | | [h3: Almoco]    | | [h3: ..]| |
+| | [t2: 420 kcal]  | | [t2: 0/686]     | | [t2: ..]| |
+| | [btn2: [ico:plus]]| | [btn2: [ico:plus]]| |       | |
+| +-----------------+ +-----------------+ +--------+ |
++----------------------------------------------------+
+| card2                                              |
+| [ico:drop] [h3: AGUA] [t2: 1,2 / 2,8 L]            |
+| [chart: 12 gotas que acendem]                      |
+| [btn2: +250] [btn2: +500]                          |
++----------------------------------------------------+
+| nav                                                |
+| [btn: [ico:home] HOJE] [lnk: [ico:diet]] [btn3: [ico:plus]] |
+| [lnk: [ico:dumbbell]] [lnk: [ico:chart]]           |
++----------------------------------------------------+

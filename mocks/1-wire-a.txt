@@ -1,0 +1,44 @@
++----------------------------------------------------+
+| nav                                                |
+| [av:] [t2: Boa tarde,]                  [ico:bell] |
+|       [h3: Lucas]                    [ico:streak]  |
+|                                      [t3: 12 dias] |
++----------------------------------------------------+
+| hero                                               |
+|  +----------------------------------------------+  |
+|  | media                                        |  |
+|  | [chart: 3 aneis concentricos animados]       |  |
+|  | [h1: 1.640]                                  |  |
+|  | [t2: kcal restantes]                         |  |
+|  +----------------------------------------------+  |
+|  [ico:fire] [t3: Calorias]  [ico:drop] [t3: Agua]  |
+|  [ico:dumbbell] [t3: Treino]                       |
++----------------------------------------------------+
+| rail                                               |
+| [btn: Seg 18] [btn2: Ter 19] [lnk: Qua 20] [lnk: ..]|
++----------------------------------------------------+
+| card                                               |
+| [t3: Macros de hoje]                               |
+| +--------------+ +--------------+ +--------------+ |
+| | card2        | | card2        | | card2        | |
+| | [chart: arco]| | [chart: arco]| | [chart: arco]| |
+| | [h3: 120g]   | | [h3: 98g]    | | [h3: 41g]    | |
+| | [t3: Carbo]  | | [t3: Prot]   | | [t3: Gord]   | |
+| +--------------+ +--------------+ +--------------+ |
++----------------------------------------------------+
+| card3                                              |
+| [img: icone 3D do grupo muscular]                  |
+| [t3: Treino de hoje]                               |
+| [h2: Treino A - Peito e Triceps]                   |
+| [t2: 7 exercicios - 41 min]                        |
+| [btn: [ico:play] Comecar treino]                   |
++----------------------------------------------------+
+| card                                               |
+| [ico:drop] [h3: Agua] [t2: 1,2 / 2,8 L]            |
+| [img: copo com liquido animado]  [btn2: +250]      |
+|                                  [btn2: +500]      |
++----------------------------------------------------+
+| nav                                                |
+| [btn: [ico:home]] [lnk: [ico:diet]] [btn3: [ico:plus]] |
+| [lnk: [ico:dumbbell]] [lnk: [ico:chart]]           |
++----------------------------------------------------+
