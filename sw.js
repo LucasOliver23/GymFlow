@@ -1,7 +1,7 @@
 // GymFlow · Service Worker — app shell offline.
 // Firebase, Open Food Facts e qualquer outro domínio nunca passam pelo cache.
-const CACHE = 'gymflow-v3';
-const SHELL = ['/', '/index.html', '/manifest.json', '/firebase-config.js', '/dados/taco.js', '/dados/exercicios.js', '/dados/receitas.js', '/dados/dicas.js', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'gymflow-v4';
+const SHELL = ['/', '/index.html', '/manifest.json', '/firebase-config.js', '/dados/taco.js', '/dados/exercicios.js', '/dados/receitas.js', '/dados/dicas.js', '/fontes/Inter.woff', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
