@@ -23,6 +23,7 @@ index.html           App completo (HTML + CSS + JS)
 firebase-config.js   Chaves do Firebase (vazio = modo local)
 dados/taco.js        Tabela TACO 4ª ed. (gerada do CSV oficial, não editar à mão)
 dados/exercicios.js  Biblioteca de exercícios e modelos de ficha
+fontes/Inter.woff    Fonte Inter embutida (licença SIL OFL em fontes/Inter-LICENCA-OFL.txt)
 dados/receitas.js    Receitas do cardápio (ingredientes TACO em gramas, classes de troca)
 dados/dicas.js       Dicas de alimentação (Guia Alimentar, Ministério da Saúde)
 manifest.json, sw.js, icons/   PWA instalável e offline

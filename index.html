@@ -13,20 +13,22 @@
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <style>
+/* Inter (SIL Open Font License, fontes/Inter-LICENCA-OFL.txt), embutida para funcionar offline */
+@font-face{font-family:Inter;src:url(fontes/Inter.woff) format('woff');font-weight:100 900;font-display:swap}
 :root{
-  --bg:#000000; --card:#121212; --card2:#1c1c1e; --card3:#262629; --line:#2c2c2e;
+  --bg:#000000; --card:#121214; --card2:#1a1a1d; --card3:#26262a; --line:#26262a; --borda:rgba(255,255,255,.06);
   --txt:#f5f5f7; --sub:#a1a1a6; --mut:#6e6e73;
   --ac:#00d084; --ac2:#00b371; --acbg:rgba(0,208,132,.14);
   --blue:#0a84ff; --bluebg:rgba(10,132,255,.15);
   --warn:#ffb020; --warnbg:rgba(255,176,32,.14);
   --red:#ff453a; --redbg:rgba(255,69,58,.14);
   --carb:#ffb020; --prot:#00d084; --gord:#bf5af2;
-  --r:18px; --nav:68px;
+  --r:24px; --nav:68px;
   --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--txt)}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
+body{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:15px;line-height:1.4;letter-spacing:-.01em;font-feature-settings:"tnum" 0;-webkit-font-smoothing:antialiased;overscroll-behavior-y:none}
 body.travado{overflow:hidden}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 input,select,textarea{font:inherit;font-size:16px;color:var(--txt);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;width:100%;outline:none;min-width:0}
@@ -36,7 +38,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);background-position:calc(100% - 18px) 50%,calc(100% - 13px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:34px}
 label.campo{display:block;margin-bottom:12px}
 label.campo>span{display:block;font-size:13px;color:var(--sub);margin:0 0 6px 2px}
-h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.01em}
+h1,h2,h3,h4{margin:0;font-weight:700;letter-spacing:-.02em}
 h1{font-size:28px} h2{font-size:22px} h3{font-size:18px} h4{font-size:15px}
 a{color:var(--ac)}
 .hidden{display:none!important}
@@ -55,15 +57,43 @@ a{color:var(--ac)}
 .topbar{position:sticky;top:0;z-index:20;background:rgba(0,0,0,.86);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);padding:calc(10px + var(--safe-t)) 16px 10px;display:flex;align-items:center;gap:12px}
 .avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--ac),#00a3ff);color:#000;display:grid;place-items:center;font-weight:800;font-size:15px;flex:none}
 .avatar.g{width:72px;height:72px;font-size:26px}
-.topbar .ola{font-size:13px;color:var(--sub)} .topbar .nome{font-weight:700;font-size:16px}
-.icone-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--sub);background:var(--card)}
+.topbar .ola{font-size:13.5px;color:var(--sub)} .topbar .nome{font-weight:800;font-size:21px;letter-spacing:-.025em}
+.icone-btn{width:42px;height:42px;border-radius:50%;border:1px solid var(--borda);display:grid;place-items:center;color:var(--sub);background:var(--card)}
 .icone-btn:active{transform:scale(.95)}
-.agua-bts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-.agua-bts .btn{flex:1 1 0;min-width:64px}
+/* --- estilo novo: destaque com brilho, ícones coloridos, vidro --- */
+.hero{position:relative;overflow:hidden;border-radius:28px;padding:20px 20px 18px;margin-bottom:14px;border:1px solid rgba(0,208,132,.35);
+  background:radial-gradient(120% 90% at 100% 0%,rgba(0,208,132,.28),transparent 55%),linear-gradient(160deg,#0f2e23 0%,#0b1512 45%,#0b0d0e 100%);box-shadow:0 18px 50px -20px rgba(0,208,132,.45)}
+.hero::after{content:"";position:absolute;right:-70px;top:-70px;width:220px;height:220px;border-radius:50%;pointer-events:none;
+  box-shadow:0 0 0 1px rgba(0,208,132,.18),0 0 0 34px rgba(0,208,132,.025),0 0 0 35px rgba(0,208,132,.14),0 0 0 72px rgba(0,208,132,.02),0 0 0 73px rgba(0,208,132,.09)}
+.hero>*{position:relative;z-index:1}
+.hero .topo{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.hero .rot{display:flex;align-items:center;gap:8px;color:#d6dbd8;font-size:14.5px;font-weight:500}
+.hero .pilula{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:999px;padding:7px 14px;font-weight:700;font-size:13.5px;color:var(--txt)}
+.hero .num{font-size:54px;font-weight:800;letter-spacing:-.045em;line-height:1;margin:18px 0 4px}
+.hero .num span{font-size:22px;font-weight:700;letter-spacing:-.02em;color:#cfd6d2}
+.hero .sub2{color:#9fb0a8;font-size:13.5px}
+.hero .eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.14em;color:#8a9a93;margin:20px 0 10px;text-transform:uppercase}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mini>div{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:12px 11px}
+.mini .n{font-size:12.5px;color:#b8c2bd;margin-top:10px}
+.mini .q{font-weight:800;font-size:16px;letter-spacing:-.02em;margin-top:2px}
+.mini .q span{font-weight:600;font-size:12px;color:#8a9a93}
+.ico{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;flex:none}
+.ico.g{width:52px;height:52px;border-radius:16px}
+.atalhos{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:4px 0 16px}
+.atalhos button{display:flex;flex-direction:column;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#c9c9cf}
+.atalhos .ico{width:62px;height:62px;border-radius:20px;background:#151518;border:1px solid var(--borda)}
+.atalhos button:active .ico{transform:scale(.94)}
+.lista{display:flex;align-items:center;gap:14px}
+.lista b.t{font-size:16.5px;font-weight:700;letter-spacing:-.015em;display:block}
+.lista .d{color:var(--sub);font-size:13.5px;margin-top:2px}
+.agua-bts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.agua-bts .btn{flex:1 1 0;min-width:64px;background:var(--bluebg);color:#4da3ff;font-weight:700}
+.agua-bts .btn.sec{background:var(--card2);color:var(--txt)}
 .tipo-ativ{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.tipo-ativ button{background:var(--card2);border:1.5px solid transparent;border-radius:14px;padding:12px 6px;text-align:center;font-weight:600;font-size:13.5px}
+.tipo-ativ button{background:var(--card2);border:1.5px solid var(--borda);border-radius:20px;padding:12px 6px;text-align:center;font-weight:600;font-size:13.5px}
 .tipo-ativ button.on{border-color:var(--ac);background:var(--acbg)}
-.tipo-ativ .em{display:block;font-size:24px;margin-bottom:4px}
+.tipo-ativ .em{display:grid;place-items:center;width:46px;height:46px;border-radius:15px;margin:0 auto 8px}
 .mapa-ativ{height:230px;border-radius:16px;overflow:hidden;background:var(--card2);margin-top:4px}
 .mapa-ativ .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}
 .mapa-ativ .leaflet-control-attribution{font-size:10px;background:rgba(0,0,0,.6);color:#aaa}
@@ -71,35 +101,35 @@ a{color:var(--ac)}
 .sync{width:8px;height:8px;border-radius:50%;background:var(--ac);display:inline-block;margin-right:6px}
 .sync.pend{background:var(--warn)} .sync.erro{background:var(--red)} .sync.local{background:var(--mut)}
 main#main{padding:4px 16px calc(var(--nav) + 40px + var(--safe-b))}
-.card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;border:1px solid #1a1a1c}
-.card.dois{background:var(--card2)}
+.card{background:var(--card);border-radius:var(--r);padding:18px;margin-bottom:12px;border:1px solid var(--borda)}
+.card.dois{background:var(--card2);border-radius:18px}
 .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
 .sec-h{display:flex;align-items:center;justify-content:space-between;margin:22px 2px 10px}
 .sec-h h3{font-size:18px}
 .link{color:var(--ac);font-weight:600;font-size:14px}
 .lbl{font-size:13px;color:var(--sub)} .val{font-size:17px;font-weight:700;margin-bottom:8px}
-.big{font-size:32px;font-weight:800;letter-spacing:-.02em}
+.big{font-size:32px;font-weight:800;letter-spacing:-.035em}
 .vazio{color:var(--sub);text-align:center;padding:22px 10px;font-size:14px}
 
 /* Botões */
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 18px;border-radius:14px;font-weight:700;background:var(--ac);color:#000;transition:transform .08s,opacity .2s;white-space:nowrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 18px;border-radius:16px;font-weight:700;background:var(--ac);color:#000;transition:transform .08s,opacity .2s;white-space:nowrap}
 .btn:active{transform:scale(.97)}
 .btn.bl{width:100%}
-.btn.sec{background:var(--card2);color:var(--txt)}
+.btn.sec{background:var(--card2);color:var(--txt);border:1px solid var(--borda)}
 .btn.ghost{background:transparent;color:var(--ac);border:1px solid var(--line)}
 .btn.perigo{background:var(--redbg);color:var(--red)}
-.btn.peq{padding:8px 12px;font-size:13px;border-radius:11px}
+.btn.peq{padding:9px 13px;font-size:13px;border-radius:12px}
 .btn[disabled]{opacity:.45;pointer-events:none}
 .mais{width:34px;height:34px;border-radius:50%;background:var(--ac);color:#000;display:grid;place-items:center;flex:none}
 .mais:active{transform:scale(.92)}
-.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:var(--card2);color:var(--sub);font-size:13px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;background:var(--card2);color:var(--sub);font-size:13px;font-weight:600;border:1px solid var(--borda);white-space:nowrap}
 .chip.on{background:var(--acbg);color:var(--ac);border-color:rgba(0,208,132,.35)}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
-.seg{display:flex;background:var(--card);border-radius:14px;padding:4px;gap:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
+.seg{display:flex;background:#0d0d0f;border:1px solid var(--borda);border-radius:999px;padding:5px;gap:4px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}
 .seg::-webkit-scrollbar{display:none}
-.seg button{flex:1;padding:9px 10px;border-radius:10px;color:var(--sub);font-weight:600;font-size:13.5px;white-space:nowrap}
-.seg button.on{background:var(--card3);color:var(--txt)}
+.seg button{flex:1;padding:10px 12px;border-radius:999px;color:var(--sub);font-weight:600;font-size:13.5px;white-space:nowrap}
+.seg button.on{background:var(--acbg);color:var(--ac);font-weight:700}
 .badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:10.5px;font-weight:700;letter-spacing:.02em;vertical-align:middle}
 .badge.taco{background:var(--acbg);color:var(--ac)}
 .badge.off{background:var(--bluebg);color:var(--blue)}
@@ -124,9 +154,9 @@ main#main{padding:4px 16px calc(var(--nav) + 40px + var(--safe-b))}
 .anel{position:relative;flex:none}
 .anel svg{display:block;transform:rotate(-90deg)}
 .anel .meio{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.anel .meio b{font-size:24px;letter-spacing:-.02em}
+.anel .meio b{font-size:26px;font-weight:800;letter-spacing:-.04em}
 .anel .meio span{font-size:12px;color:var(--sub)}
-.barra{height:6px;border-radius:6px;background:var(--card3);overflow:hidden}
+.barra{height:7px;border-radius:999px;background:var(--card3);overflow:hidden}
 .barra>i{display:block;height:100%;border-radius:6px;background:var(--ac);transition:width .4s}
 .macros{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
 .macro .lbl{margin-bottom:6px}
@@ -137,23 +167,23 @@ main#main{padding:4px 16px calc(var(--nav) + 40px + var(--safe-b))}
 .item:last-child{border-bottom:0}
 .item .t{font-weight:600}
 .item .d{font-size:12.5px;color:var(--sub)}
-.ref{background:var(--card);border-radius:16px;padding:14px 14px 14px 16px;margin-bottom:10px;border:1px solid #1a1a1c}
+.ref{background:var(--card);border-radius:22px;padding:16px 16px 16px 18px;margin-bottom:10px;border:1px solid var(--borda)}
 .ref .itens{margin-top:10px;border-top:1px solid var(--line)}
 .ref .itens .item{padding:10px 0}
 .res-item{display:flex;align-items:center;gap:10px;padding:12px 4px;border-bottom:1px solid var(--line);width:100%;text-align:left}
 .res-item:active{background:var(--card2)}
 
 /* Nav inferior */
-.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(10,10,10,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
+.nav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(8,8,9,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
 .nav .in{max-width:560px;margin:0 auto;height:var(--nav);display:grid;grid-template-columns:repeat(5,1fr);align-items:center}
 .nav button{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;color:var(--mut);font-weight:600}
 .nav button.on{color:var(--ac)}
-.nav .fab{width:58px;height:58px;border-radius:50%;background:var(--ac);color:#000;display:grid;place-items:center;margin:-26px auto 0;box-shadow:0 6px 24px rgba(0,208,132,.4);border:5px solid #000}
+.nav .fab{width:60px;height:60px;border-radius:50%;background:var(--ac);color:#000;display:grid;place-items:center;margin:-28px auto 0;box-shadow:0 8px 28px rgba(0,208,132,.45);border:5px solid #000}
 .nav .fab:active{transform:scale(.94)}
 
 /* Sheets */
 #sheets .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;animation:fade .2s}
-.sheet{position:fixed;left:0;right:0;bottom:0;z-index:71;background:var(--card);border-radius:22px 22px 0 0;max-height:88vh;overflow-y:auto;padding:8px 16px calc(20px + var(--safe-b));max-width:560px;margin:0 auto;animation:sobe .22s ease-out;border-top:1px solid var(--line)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:71;background:var(--card);border-radius:28px 28px 0 0;border-top:1px solid var(--borda);max-height:88vh;overflow-y:auto;padding:8px 16px calc(20px + var(--safe-b));max-width:560px;margin:0 auto;animation:sobe .22s ease-out;border-top:1px solid var(--line)}
 .sheet.alto{height:92vh;max-height:92vh}
 .sheet .grab{width:40px;height:5px;border-radius:3px;background:var(--card3);margin:4px auto 12px}
 .sheet-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
@@ -178,7 +208,7 @@ main#main{padding:4px 16px calc(var(--nav) + 40px + var(--safe-b))}
 .passos{display:flex;gap:6px;margin-bottom:22px}
 .passos i{flex:1;height:4px;border-radius:3px;background:var(--card3)}
 .passos i.on{background:var(--ac)}
-.opcao{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:10px}
+.opcao{display:block;width:100%;text-align:left;background:var(--card);border:1.5px solid var(--line);border-radius:20px;padding:14px 16px;margin-bottom:10px}
 .opcao.on{border-color:var(--ac);background:var(--acbg)}
 .opcao b{display:block} .opcao span{font-size:13px;color:var(--sub)}
 .resumo-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -235,7 +265,7 @@ tr.ok .chk{background:var(--ac);border-color:var(--ac);color:#000}
 
 /* Conquistas */
 .conq{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.conq div{background:var(--card);border-radius:16px;padding:14px 8px;text-align:center;border:1px solid #1a1a1c}
+.conq div{background:var(--card);border-radius:20px;padding:14px 8px;text-align:center;border:1px solid var(--borda)}
 .conq .em{font-size:30px;filter:grayscale(1);opacity:.35}
 .conq .on .em{filter:none;opacity:1}
 .conq b{display:block;font-size:12.5px;margin-top:6px}
@@ -987,21 +1017,32 @@ function macrosHTML(t, m) {
   const it = [['Carboidrato', t.c, m.carb, 'var(--carb)'], ['Proteína', t.p, m.prot, 'var(--prot)'], ['Gordura', t.g, m.gord, 'var(--gord)']];
   return `<div class="macros">${it.map(([n, v, meta, cor]) => `<div class="macro"><div class="lbl">${n}</div>${barra(v / meta, v > meta * 1.1 ? 'var(--red)' : cor)}<div class="q"><b>${nf(v)}</b> / ${nf(meta)} g</div></div>`).join('')}</div>`;
 }
+// Ícone dentro de quadrado colorido (estilo do app). cor: verde, azul, roxo, amarelo, laranja, rosa, vermelho
+const CORES = { verde: ['#00d084', 'rgba(0,208,132,.15)'], azul: ['#4da3ff', 'rgba(10,132,255,.15)'], roxo: ['#bf5af2', 'rgba(191,90,242,.16)'], amarelo: ['#ffcc33', 'rgba(255,204,51,.15)'], laranja: ['#ff9f43', 'rgba(255,159,67,.15)'], rosa: ['#ff6b9a', 'rgba(255,107,154,.15)'], vermelho: ['#ff453a', 'rgba(255,69,58,.15)'] };
+const tile = (icone, cor = 'verde', tam = 20, cls = '') => { const [c, bg] = CORES[cor] || CORES.verde; return `<span class="ico ${cls}" style="background:${bg};color:${c}">${ic(icone, tam, 2.2)}</span>`; };
+const COR_TIPO = { caminhada: 'verde', corrida: 'amarelo', bike: 'azul' };
+const tileTipo = (tipo, tam = 20, cls = '') => tile((TIPOS_ATIV[tipo] || {}).icone || 'corrida', COR_TIPO[tipo] || 'amarelo', tam, cls);
 function cardCalorias(t, m, titulo, acao) {
   const rest = Math.round(m.kcal - t.kcal), passou = rest < 0;
-  return `<div class="card">
-    <div class="card-h"><h3>${titulo}</h3>${acao || ''}</div>
-    <div class="row sb">
-      <div><div class="lbl">Meta diária</div><div class="val">${nf(m.kcal)} kcal</div><div class="lbl">Consumido</div><div class="val" style="margin:0">${nf(t.kcal)} kcal</div>
-      ${t.semKcal ? `<div class="tiny warn mt">${t.semKcal} item(ns) sem kcal na fonte</div>` : ''}
-      ${m.extraAtiv ? `<div class="tiny ac mt">Inclui +${nf(m.extraAtiv)} kcal das atividades</div>` : ''}</div>
-      ${anel(t.kcal / m.kcal, passou ? 'var(--red)' : 'var(--ac)', 128, 12, `<b>${nf(Math.abs(rest))}</b><span>${passou ? 'Acima da meta' : 'Restantes'}</span>`)}
-    </div>${macrosHTML(t, m)}</div>`;
+  const mac = [['Carboidrato', t.c, m.carb, 'amarelo', 'dieta'], ['Proteína', t.p, m.prot, 'verde', 'treino'], ['Gordura', t.g, m.gord, 'roxo', 'gota']];
+  return `<div class="hero"><div class="topo"><span class="rot">${ic('fogo', 18)} ${titulo}</span>${acao || `<span class="pilula">Meta ${nf(m.kcal)}</span>`}</div>
+    <div class="num" ${passou ? 'style="color:var(--red)"' : ''}>${nf(Math.abs(rest))} <span>kcal</span></div>
+    <div class="sub2">${passou ? 'acima da meta' : 'restantes'} · meta ${nf(m.kcal)} · comido ${nf(t.kcal)} kcal</div>
+    ${t.semKcal ? `<div class="tiny warn mt">${t.semKcal} item(ns) sem kcal na fonte</div>` : ''}
+    ${m.extraAtiv ? `<div class="tiny ac mt">Inclui +${nf(m.extraAtiv)} kcal das atividades</div>` : ''}
+    <div class="eyebrow">Macros</div>
+    <div class="mini">${mac.map(([n, v, mt, cor, i]) => `<div>${tile(i, cor, 18)}<div class="n">${n}</div><div class="q" style="color:${v > mt * 1.1 ? 'var(--red)' : CORES[cor][0]}">${nf(v)} <span>/ ${nf(mt)} g</span></div></div>`).join('')}</div></div>`;
+}
+function atalhosHoje() {
+  const mover = usaArLivre() ? ['Correr', 'corrida', 'amarelo', GPS ? 'escolherAtiv' : 'novaAtiv'] : ['Treinar', 'treino', 'amarelo', 'iniciarProximo'];
+  const l = [['Água', 'gota', 'azul', 'aguaOutro'], ['Peso', 'balanca', 'roxo', 'registrarPeso'], ['Cardápio', 'dieta', 'verde', 'atalhoCardapio'], mover];
+  return `<div class="atalhos">${l.map(([n, i, cor, act]) => `<button data-act="${act}"><span class="ico" style="color:${CORES[cor][0]}">${ic(i, 28, 2.2)}</span>${n}</button>`).join('')}</div>`;
 }
 function vHoje() {
   const m = metasDia(DIA), t = totais(DIA), d = D[DIA] || { agua: 0, supl: {} };
   return cardAtualizacao() + semanaHTML()
-    + cardCalorias(t, m, tituloData(DIA), `<button class="link" data-act="ir" data-v="perfil">Editar</button>`)
+    + cardCalorias(t, m, DIA === hojeISO() ? 'Calorias de hoje' : tituloData(DIA), `<button class="pilula" data-act="ir" data-v="perfil">Meta ${nf(m.kcal)}</button>`)
+    + (DIA === hojeISO() ? atalhosHoje() : '')
     + (usaAcademia() ? cardTreinoDia() : '')
     + cardAtividades()
     + cardAgua(d, m)
@@ -1012,50 +1053,51 @@ function vHoje() {
 }
 function cardAtualizacao() {
   if (!ATUALIZACAO) return '';
-  return `<div class="card" style="border-color:rgba(10,132,255,.5)"><div class="row sb"><div class="grow"><div class="lbl blue">${ic('download', 14)} Nova versão do app</div><b>GymFlow ${esc(ATUALIZACAO.versao)}</b><div class="small sub">Baixe e toque em Instalar. Seus dados continuam salvos.</div></div><button class="btn peq" style="background:var(--blue);color:#fff" data-act="atualizarApp">Atualizar</button></div></div>`;
+  return `<div class="card" style="border-color:rgba(10,132,255,.5)"><div class="lista">${tile('download', 'azul', 22, 'g')}<div class="grow"><b class="t">Nova versão do app</b><div class="d">GymFlow ${esc(ATUALIZACAO.versao)} · seus dados continuam salvos</div></div><button class="btn peq" style="background:var(--blue);color:#fff" data-act="atualizarApp">Atualizar</button></div></div>`;
 }
 function cardTreinoDia() {
   const ses = sessoesDoDia(DIA);
-  if (SA) return `<div class="card" style="border-color:rgba(0,208,132,.4)"><div class="row sb"><div><div class="lbl ac">Treino em andamento</div><h3>${esc(SA.nome)}</h3><div class="small sub">${SA.ex.length} exercícios · iniciado às ${new Date(SA.ini).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div></div><button class="btn" data-act="abrirSessao">Continuar</button></div></div>`;
-  if (ses.length) return ses.map(s => `<div class="card"><div class="row sb"><div><div class="lbl ac">${ic('check', 14, 3)} Treino concluído</div><h3>${esc(s.nome)}</h3><div class="small sub">${fmtDur(s.fim - s.ini)} · ${s.ex.length} exercícios · ${nf(volumeSessao(s))} kg de volume</div></div><button class="icone-btn" data-act="verSessao" data-id="${s.id}">${ic('dir', 20)}</button></div></div>`).join('');
+  if (SA) return `<div class="card" style="border-color:rgba(0,208,132,.4)"><div class="lista">${tile('treino', 'verde', 26, 'g')}<div class="grow"><div class="small ac">Treino em andamento</div><b class="t">${esc(SA.nome)}</b><div class="d">${SA.ex.length} exercícios · desde ${new Date(SA.ini).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div></div><button class="btn peq" data-act="abrirSessao">Continuar</button></div></div>`;
+  if (ses.length) return ses.map(s => `<button class="card" style="display:block;width:100%;text-align:left" data-act="verSessao" data-id="${s.id}"><div class="lista">${tile('check', 'verde', 26, 'g')}<div class="grow"><div class="small ac">Treino concluído</div><b class="t">${esc(s.nome)}</b><div class="d">${fmtDur(s.fim - s.ini)} · ${s.ex.length} exercícios · ${nf(volumeSessao(s))} kg</div></div>${ic('dir', 20)}</div></button>`).join('');
   if (DIA !== hojeISO()) return '';
   const f = proximaFicha();
-  if (!f) return `<div class="card"><div class="row sb"><div class="grow"><div class="lbl">Treino</div><h3>Monte sua ficha</h3><div class="small sub">Use um modelo pronto ou crie do zero.</div></div><button class="btn" data-act="ir" data-v="treino">Montar</button></div></div>`;
+  if (!f) return `<div class="card"><div class="lista">${tile('treino', 'laranja', 26, 'g')}<div class="grow"><b class="t">Monte sua ficha</b><div class="d">Use um modelo pronto ou crie do zero</div></div><button class="btn peq" data-act="ir" data-v="treino">Montar</button></div></div>`;
   const ult = SESS.find(s => s.fichaId === f.id);
-  const grupos = [...new Set(f.itens.map(i => exPorId(i.ex).grupo))].slice(0, 4).join(' · ');
-  return `<div class="card"><div class="row sb"><div class="grow"><div class="lbl">Treino de hoje</div><h3 class="ellipsis">${esc(f.nome)}</h3><div class="small sub">${f.itens.length} exercícios · ${esc(grupos)}${ult ? ' · último em ' + fmtData(iso(new Date(ult.ini))) : ''}</div></div><button class="btn" data-act="iniciarTreino" data-id="${f.id}">${ic('play', 14)} Começar</button></div></div>`;
+  const grupos = [...new Set(f.itens.map(i => exPorId(i.ex).grupo))].slice(0, 3).join(', ');
+  return `<div class="card"><div class="lista">${tile('treino', 'laranja', 26, 'g')}<div class="grow" style="min-width:0"><div class="small sub">Treino de hoje</div><b class="t ellipsis">${esc(f.nome)}</b><div class="d ellipsis">${f.itens.length} exercícios · ${esc(grupos)}${ult ? ' · último ' + fmtData(iso(new Date(ult.ini))) : ''}</div></div><button class="btn peq" data-act="iniciarTreino" data-id="${f.id}">${ic('play', 13)} Começar</button></div></div>`;
 }
 function barraMetaKm() {
   const meta = S.config.metaKm; if (!meta) return '';
   const km = totaisAtiv(iniSemana(), hojeISO()).km;
-  return `<div class="mt"><div class="row sb small"><span class="sub">Meta da semana</span><span><b>${nf(km, 1)}</b> / ${nf(meta, 1)} km${km >= meta ? ' <span class="ac">✓</span>' : ''}</span></div><div style="margin-top:6px">${barra(km / meta)}</div></div>`;
+  return `<div class="mt2"><div class="row sb small"><span class="sub">Meta da semana</span><span><b>${nf(km, 1)}</b> <span class="sub">/ ${nf(meta, 1)} km</span>${km >= meta ? ' <span class="ac">✓</span>' : ''}</span></div><div style="margin-top:8px">${barra(km / meta)}</div></div>`;
 }
-const linhaAtiv = a => `<button class="item" style="width:100%;text-align:left" data-act="verAtiv" data-id="${a.id}"><span style="font-size:24px">${TIPOS_ATIV[a.tipo].em}</span><div class="grow"><div class="t">${TIPOS_ATIV[a.tipo].t}${a.km ? ' · ' + nf(a.km, 2) + ' km' : ''}</div><div class="d">${fmtTempo(a.dur)}${leituraAtiv(a) ? ' · ' + leituraAtiv(a) : ''} · ${nf(a.kcal)} kcal</div></div>${ic('dir', 18)}</button>`;
+const linhaAtiv = a => `<button class="item" style="width:100%;text-align:left" data-act="verAtiv" data-id="${a.id}">${tileTipo(a.tipo, 20)}<div class="grow"><div class="t">${TIPOS_ATIV[a.tipo].t}${a.km ? ' · ' + nf(a.km, 2) + ' km' : ''}</div><div class="d">${fmtTempo(a.dur)}${leituraAtiv(a) ? ' · ' + leituraAtiv(a) : ''} · ${nf(a.kcal)} kcal</div></div>${ic('dir', 18)}</button>`;
 function cardGpsAndamento() {
   const e = GPSV.e || {}, T = TIPOS_ATIV[e.tipo] || TIPOS_ATIV.corrida;
-  return `<div class="card" style="border-color:rgba(0,208,132,.4)"><div class="row sb"><div><div class="lbl ac">${e.pausado ? 'Pausada' : 'Gravando pelo GPS'}</div><h3>${T.em} ${T.t}</h3><div class="small sub">${nf((e.metros || 0) / 1000, 2)} km · ${fmtCron(e.movMs || 0)}</div></div><button class="btn" data-act="gpsAbrir">Abrir</button></div></div>`;
+  return `<div class="card" style="border-color:rgba(0,208,132,.4)"><div class="lista">${tileTipo(e.tipo, 26, 'g')}<div class="grow"><div class="small ac">${e.pausado ? 'Pausada' : 'Gravando pelo GPS'}</div><b class="t">${T.t}</b><div class="d">${nf((e.metros || 0) / 1000, 2)} km · ${fmtCron(e.movMs || 0)}</div></div><button class="btn peq" data-act="gpsAbrir">Abrir</button></div></div>`;
 }
 function cardAtividades() {
   if (GPS && GPSV.e && GPSV.e.ativo && DIA === hojeISO()) return cardGpsAndamento();
   const hoje = ativDoDia(DIA);
   if (!usaArLivre() && !hoje.length) return '';
-  const titulo = hoje.length ? `<div class="lbl ac">${ic('check', 14, 3)} Atividade${hoje.length > 1 ? 's' : ''} ${DIA === hojeISO() ? 'de hoje' : 'do dia'}</div>` : `<div class="lbl">${ic('corrida', 14)} Ar livre</div>`;
-  return `<div class="card"><div class="row sb"><div class="grow">${titulo}${hoje.length ? '' : `<h3>${DIA === hojeISO() ? 'Bora se mexer?' : 'Nenhuma atividade'}</h3><div class="small sub">Caminhada, corrida ou bike</div>`}</div>
-    ${DIA <= hojeISO() ? `<button class="btn ${hoje.length ? 'sec peq' : ''}" data-act="${GPS && DIA === hojeISO() ? 'escolherAtiv' : 'novaAtiv'}">${ic(GPS && DIA === hojeISO() ? 'play' : 'mais', 14)} ${hoje.length ? 'Outra' : GPS && DIA === hojeISO() ? 'Iniciar' : 'Registrar'}</button>` : ''}</div>
-    ${hoje.length ? `<div class="mt">${hoje.map(linhaAtiv).join('')}</div>` : ''}${barraMetaKm()}</div>`;
+  const ehHoje = DIA === hojeISO(), acao = GPS && ehHoje ? 'escolherAtiv' : 'novaAtiv';
+  const botao = DIA <= hojeISO() ? `<button class="btn ${hoje.length ? 'sec ' : ''}peq" data-act="${acao}">${ic(GPS && ehHoje ? 'play' : 'mais', 13)} ${hoje.length ? 'Outra' : GPS && ehHoje ? 'Iniciar' : 'Registrar'}</button>` : '';
+  if (!hoje.length) return `<div class="card"><div class="lista">${tile('corrida', 'amarelo', 26, 'g')}<div class="grow"><b class="t">${ehHoje ? 'Bora se mexer?' : 'Nenhuma atividade'}</b><div class="d">Caminhada, corrida ou bike</div></div>${botao}</div>${barraMetaKm()}</div>`;
+  return `<div class="card"><div class="row sb"><span class="small ac">${ic('check', 14, 3)} Atividade${hoje.length > 1 ? 's' : ''} ${ehHoje ? 'de hoje' : 'do dia'}</span>${botao}</div>
+    <div class="mt">${hoje.map(linhaAtiv).join('')}</div>${barraMetaKm()}</div>`;
 }
 const fmtMl = ml => ml >= 1000 ? nf(ml / 1000, ml % 1000 ? 1 : 0) + ' L' : ml + ' ml';
 function cardAgua(d, m) {
-  const ml = d.agua || 0, copos = Math.ceil(m.agua / 250), cheios = Math.floor(ml / 250);
-  return `<div class="card"><div class="row sb"><div><div class="lbl">${ic('gota', 14)} Água</div><div><b class="big blue" style="font-size:26px">${nf(ml / 1000, 2)}</b> <span class="sub">/ ${nf(m.agua / 1000, 1)} L</span></div></div>
+  const ml = d.agua || 0;
+  return `<div class="card"><div class="lista">${tile('gota', 'azul', 26, 'g')}<div class="grow"><b class="t">Água</b><div class="d"><b style="color:#4da3ff">${nf(ml / 1000, 2)}</b> de ${nf(m.agua / 1000, 1)} L hoje</div></div>
     ${ml > 0 ? `<button class="icone-btn" data-act="aguaDesfazer" aria-label="Desfazer o último registro de água">${ic('desfazer', 18)}</button>` : ''}</div>
-    <div class="agua-bts">${S.config.copos.map(v => `<button class="btn peq" style="background:var(--blue);color:#fff" data-act="agua" data-v="${v}">+${fmtMl(v)}</button>`).join('')}<button class="btn sec peq" data-act="aguaOutro">Outro</button></div>
-    <div class="row mt" style="gap:4px">${Array.from({ length: copos }, (_, i) => `<i style="flex:1;height:8px;border-radius:4px;background:${i < cheios ? 'var(--blue)' : 'var(--card3)'}"></i>`).join('')}</div></div>`;
+    <div style="margin-top:14px">${barra(ml / m.agua, 'var(--blue)')}</div>
+    <div class="agua-bts">${S.config.copos.map(v => `<button class="btn peq" data-act="agua" data-v="${v}">+${fmtMl(v)}</button>`).join('')}<button class="btn sec peq" data-act="aguaOutro">Outro</button></div></div>`;
 }
 function cardSupl(d) {
-  if (!S.suplementos.length) return `<div class="card"><div class="row sb"><div class="grow"><div class="lbl">${ic('pilula', 14)} Suplementos</div><div class="small sub">Cadastre creatina, whey etc. e receba aviso quando estiver acabando.</div></div><button class="btn sec peq" data-act="suplementos">Cadastrar</button></div></div>`;
+  if (!S.suplementos.length) return `<div class="card"><div class="lista">${tile('pilula', 'roxo', 24, 'g')}<div class="grow"><b class="t">Suplementos</b><div class="d">Cadastre creatina, whey etc. e receba aviso quando estiver acabando</div></div><button class="btn sec peq" data-act="suplementos">Cadastrar</button></div></div>`;
   const alertas = S.suplementos.filter(s => s.estoque != null && s.estoque <= (s.alerta ?? 5));
-  return `<div class="card"><div class="card-h"><div class="lbl">${ic('pilula', 14)} Suplementos de ${DIA === hojeISO() ? 'hoje' : fmtData(DIA)}</div><button class="link" data-act="suplementos">Gerenciar</button></div>
+  return `<div class="card"><div class="lista mb">${tile('pilula', 'roxo', 24, 'g')}<div class="grow"><b class="t">Suplementos</b><div class="d">${DIA === hojeISO() ? 'Marque o que tomou hoje' : fmtData(DIA)}</div></div><button class="link" data-act="suplementos">Gerenciar</button></div>
     <div class="chips wrap" style="flex-wrap:wrap">${S.suplementos.map(s => { const on = d.supl && d.supl[s.id]; return `<button class="chip ${on ? 'on' : ''}" data-act="tomarSupl" data-id="${s.id}">${on ? ic('check', 14, 3) : ''}${esc(s.nome)}${s.dose ? ' · ' + esc(s.dose) : ''}</button>`; }).join('')}</div>
     ${alertas.map(s => `<div class="small warn mt">⚠ ${esc(s.nome)}: ${s.estoque <= 0 ? 'acabou' : `restam ${s.estoque} dose${s.estoque > 1 ? 's' : ''}`} – hora de repor.</div>`).join('')}</div>`;
 }
@@ -1064,9 +1106,9 @@ function cardPesoMini() {
   const atual = p[p.length - 1], lim = addDias(hojeISO(), -30), ant = p.find(x => x.d >= lim) || p[0];
   const meta = S.perfil.metaPeso, perder = meta != null ? meta < atual.kg : S.perfil.objetivo.startsWith('perder');
   return `<div class="sec-h"><h3>Peso</h3><button class="link" data-act="registrarPeso">Registrar</button></div>
-  <div class="card" data-act="ir" data-v="evo" style="cursor:pointer"><div class="row sb"><div><div class="lbl">Peso atual</div><div class="big sens">${nf(atual.kg, 1)} <span style="font-size:16px" class="sub">kg</span></div>
+  <div class="card" data-act="ir" data-v="evo" style="cursor:pointer"><div class="lista">${tile('balanca', 'roxo', 26, 'g')}<div class="grow"><div class="big sens" style="font-size:28px">${nf(atual.kg, 1)} <span style="font-size:15px" class="sub">kg</span></div>
   <div class="small">${variacao(atual.kg, ant.kg, !perder, ' kg')} <span class="sub">em 30 dias</span></div></div>
-  ${meta ? `<div class="r"><div class="lbl">Meta</div><div class="val sens">${nf(meta, 1)} kg</div><div class="small sub sens">faltam ${nf(Math.abs(atual.kg - meta), 1)} kg</div></div>` : ''}</div></div>`;
+  ${meta ? `<div class="r"><div class="lbl">Meta</div><div class="val sens" style="margin:0">${nf(meta, 1)} kg</div><div class="small sub sens">faltam ${nf(Math.abs(atual.kg - meta), 1)} kg</div></div>` : ''}</div></div>`;
 }
 
 // ======================= DIETA =======================
@@ -1467,7 +1509,7 @@ function vTreino() {
   if (!SUB.modo) SUB.modo = 'academia';
   let topoModo = '';
   if (usaArLivre()) {
-    topoModo = `<div class="tipo-ativ" style="grid-template-columns:1fr 1fr;margin-bottom:12px">${[['academia', '🏋️', 'Academia'], ['ar', '🏃', 'Ar livre']].map(([v, em, t]) => `<button class="${SUB.modo === v ? 'on' : ''}" data-act="modoTreino" data-v="${v}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:10px"><span style="font-size:18px">${em}</span>${t}</button>`).join('')}</div>`;
+    topoModo = `<div class="tipo-ativ" style="grid-template-columns:1fr 1fr;margin-bottom:12px">${[['academia', 'treino', 'laranja', 'Academia'], ['ar', 'corrida', 'amarelo', 'Ar livre']].map(([v, i, cor, t]) => `<button class="${SUB.modo === v ? 'on' : ''}" data-act="modoTreino" data-v="${v}" style="display:flex;align-items:center;justify-content:center;gap:10px;padding:10px">${tile(i, cor, 18)}${t}</button>`).join('')}</div>`;
     if (SUB.modo === 'ar') return topoModo + treinoArLivre();
   }
   const s = SUB.treino;
@@ -1542,7 +1584,7 @@ function listaExHTML(f, acao) {
 function treinoArLivre() {
   const h0 = hojeISO(), sem = totaisAtiv(iniSemana(), h0), mes = totaisAtiv(h0.slice(0, 8) + '01', h0);
   let h = (GPSV.e && GPSV.e.ativo) ? cardGpsAndamento() : `<div class="card"><div class="card-h"><h3>${GPS ? 'Iniciar com GPS' : 'Registrar atividade'}</h3></div>
-    <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="${GPS ? 'gpsIniciar' : 'novaAtiv'}" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+    <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="${GPS ? 'gpsIniciar' : 'novaAtiv'}" data-v="${k}">${tileTipo(k, 24, 'em')}${T.t}</button>`).join('')}</div>
     ${GPS ? `<button class="btn sec bl mt" data-act="novaAtiv">${ic('lapis', 16)} Registrar sem GPS (manual)</button>`
       : `<p class="tiny mut mt">Informe tempo e distância depois da atividade. ${NATIVO ? 'Atualize o app para medir pelo GPS.' : 'No app Android, o GPS mede tudo sozinho.'}</p>`}</div>`;
   h += `<div class="card"><div class="card-h"><h3>Meta semanal</h3><button class="link" data-act="cfgAtiv">${S.config.metaKm ? 'Editar' : 'Definir'}</button></div>
@@ -1573,7 +1615,7 @@ function abrirRegistrarAtiv(tipo, id) {
   abrirSheet({
     cls: 'alto', st, orig, calc, prev,
     render: () => `${cabecalho(orig ? 'Editar atividade' : 'Registrar atividade')}
-      <div class="tipo-ativ mb">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button class="${st.tipo === k ? 'on' : ''}" data-act="ativTipo" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+      <div class="tipo-ativ mb">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button class="${st.tipo === k ? 'on' : ''}" data-act="ativTipo" data-v="${k}">${tileTipo(k, 24, 'em')}${T.t}</button>`).join('')}</div>
       <div class="grid2"><label class="campo"><span>Data</span><input type="date" data-in="ativCampo" data-k="d" value="${st.d}" max="${hojeISO()}"></label>
       <label class="campo"><span>Início</span><input type="time" data-in="ativCampo" data-k="hora" value="${st.hora}"></label></div>
       <div class="lbl mb">Duração</div>
@@ -1592,7 +1634,7 @@ function abrirDetalheAtiv(id) {
   const a = ATIV.find(x => x.id === id); if (!a) return;
   const T = TIPOS_ATIV[a.tipo], d = new Date(a.ini);
   abrirSheet({
-    render: () => `${cabecalho(T.em + ' ' + T.t)}
+    render: () => `${cabecalho(`<span class="row" style="gap:10px">${tileTipo(a.tipo, 18)}${T.t}</span>`)}
       <div class="small sub mb">${DIAS_LONGO[d.getDay()]}, ${fmtDataLonga(iso(d))} · ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${a.origem === 'gps' ? ' · GPS' : ' · registro manual'}</div>
       ${resumoAtivHTML(a)}
       ${a.notas ? `<p class="small mt">${esc(a.notas)}</p>` : ''}
@@ -1605,7 +1647,7 @@ function abrirEscolherAtiv() {
   abrirSheet({
     render: () => `${cabecalho('Nova atividade')}
       <div class="lbl mb">Medir pelo GPS</div>
-      <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="gpsIniciar" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+      <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="gpsIniciar" data-v="${k}">${tileTipo(k, 24, 'em')}${T.t}</button>`).join('')}</div>
       <button class="btn sec bl mt" data-act="novaAtiv">${ic('lapis', 16)} Registrar sem GPS (manual)</button>`,
   });
 }
@@ -1692,7 +1734,7 @@ function desenharTelaGps() {
   const kcal = kcalAtiv(e.tipo, seg, km, pesoAtual());
   const caixa = (t, v, u) => `<div class="card dois c" style="margin:0;padding:14px 8px"><div class="lbl">${t}</div><b style="font-size:26px">${v}</b><div class="tiny sub">${u}</div></div>`;
   $('#full').innerHTML = `<div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px;max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column">
-    <div class="row sb"><button class="icone-btn" data-act="gpsMinimizar" aria-label="Voltar ao app">${ic('baixo', 20)}</button><b>${T.em} ${T.t}</b><button class="icone-btn" data-act="gpsVoz" aria-label="Aviso por voz">${e.voz ? '🔊' : '🔇'}</button></div>
+    <div class="row sb"><button class="icone-btn" data-act="gpsMinimizar" aria-label="Voltar ao app">${ic('baixo', 20)}</button><b class="row" style="gap:8px">${tileTipo(e.tipo, 16)}${T.t}</b><button class="icone-btn" data-act="gpsVoz" aria-label="Aviso por voz">${e.voz ? '🔊' : '🔇'}</button></div>
     <div class="c" style="margin:26px 0 6px"><span class="small ${status[0]}">● ${status[1]}</span></div>
     <div class="c" style="font-size:64px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums">${fmtCron(e.movMs || 0)}</div>
     <div class="c" style="font-size:44px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums">${nf(km, 2)} <span style="font-size:20px" class="sub">km</span></div>
@@ -1711,7 +1753,7 @@ function abrirResumoGps(r, interrompida) {
   const st = { notas: '' }, T = TIPOS_ATIV[tipo];
   abrirSheet({
     cls: 'alto', st, a,
-    render: () => `${cabecalho(interrompida ? 'Atividade interrompida' : T.em + ' ' + T.t + ' concluída!')}
+    render: () => `${cabecalho(interrompida ? 'Atividade interrompida' : `<span class="row" style="gap:10px">${tileTipo(tipo, 18)}${T.t} concluída!</span>`)}
       ${interrompida ? '<p class="small warn" style="margin-top:0">O Android fechou o app no meio da atividade. Este é o que foi medido até ali.</p>' : ''}
       ${resumoAtivHTML(a)}
       <label class="campo mt"><span>Anotação – opcional</span><input data-in="gpsNotas" value="${esc(st.notas)}" placeholder="Como foi?"></label>
@@ -2114,7 +2156,7 @@ function evoAtiv() {
   if (!ATIV.length) return `<div class="card c"><div style="font-size:38px">🏃</div><h3 class="mt">Nenhuma atividade ainda</h3><p class="sub small">Registre caminhadas, corridas e pedaladas para ver totais, recordes e a evolução do seu ritmo.</p><button class="btn bl mt" data-act="novaAtiv">Registrar atividade</button></div>`;
   const h0 = hojeISO(), sem = totaisAtiv(iniSemana(), h0), mes = totaisAtiv(h0.slice(0, 8) + '01', h0);
   const bloco = (t, titulo) => `<div class="card dois" style="margin:0"><div class="lbl">${titulo}</div><b style="font-size:22px">${nf(t.km, 1)} km</b><div class="tiny sub">${t.n} atividade${t.n === 1 ? '' : 's'} · ${fmtTempo(t.dur)}</div>
-    ${Object.entries(TIPOS_ATIV).filter(([k]) => t.tipos[k]).map(([k, T]) => `<div class="tiny mt" style="margin-top:6px">${T.em} ${nf(t.tipos[k].km, 1)} km <span class="sub">· ${t.tipos[k].n}x</span></div>`).join('')}</div>`;
+    ${Object.entries(TIPOS_ATIV).filter(([k]) => t.tipos[k]).map(([k, T]) => `<div class="tiny mt" style="margin-top:6px;white-space:nowrap"><i style="display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;background:${CORES[COR_TIPO[k]][0]}"></i>${nf(t.tipos[k].km, 1)} km <span class="sub">· ${t.tipos[k].n}x</span></div>`).join('')}</div>`;
   let h = `<div class="grid2 mb">${bloco(sem, 'Esta semana')}${bloco(mes, 'Este mês')}</div>`;
   h += `<div class="card"><div class="card-h"><h4>Meta semanal</h4><button class="link" data-act="cfgAtiv">${S.config.metaKm ? 'Editar' : 'Definir'}</button></div>${S.config.metaKm ? barraMetaKm() : '<div class="small sub">Sem meta definida.</div>'}</div>`;
   const ini0 = addDias(iniSemana(), -49);
@@ -2123,11 +2165,11 @@ function evoAtiv() {
   const tipo = SUB.ritmo, bike = tipo === 'bike';
   const pts = ATIV.filter(a => a.tipo === tipo && a.km > 0 && a.dur > 0).map(a => ({ x: a.ini, y: bike ? r1(velAtiv(a)) : ritmoAtiv(a) })).reverse();
   h += `<div class="card"><div class="card-h"><h4>${bike ? 'Velocidade média' : 'Ritmo médio'}</h4><span class="small sub">${bike ? 'km/h · maior é melhor' : 'min/km · menor é melhor'}</span></div>
-    <div class="chips mb">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button class="chip ${tipo === k ? 'on' : ''}" data-act="ritmoTipo" data-v="${k}">${T.em} ${T.t}</button>`).join('')}</div>
+    <div class="chips mb">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button class="chip ${tipo === k ? 'on' : ''}" data-act="ritmoTipo" data-v="${k}">${ic(T.icone, 15)} ${T.t}</button>`).join('')}</div>
     ${grafLinha(pts, bike ? { casas: 1, vazio: 'Registre pelo menos 2 pedaladas com distância para ver o gráfico.' } : { fmt: fmtRitmo, cor: '#0a84ff', vazio: `Registre pelo menos 2 ${tipo === 'corrida' ? 'corridas' : 'caminhadas'} com distância para ver o gráfico.` })}</div>`;
   const rec = recordesAtiv();
   h += `<div class="sec-h"><h3>Recordes</h3></div>`;
-  h += rec.length ? rec.map(([em, n, r]) => `<button class="card" style="display:block;width:100%;text-align:left" data-act="verAtiv" data-id="${r.a.id}"><div class="row sb"><div class="grow"><b>${em} ${n}</b><div class="small sub">${fmtDataLonga(iso(new Date(r.a.ini)))} · ${r.info}</div></div><b class="ac" style="font-size:18px">${r.v}</b></div></button>`).join('')
+  h += rec.length ? rec.map(([em, n, r]) => `<button class="card" style="display:block;width:100%;text-align:left" data-act="verAtiv" data-id="${r.a.id}"><div class="lista">${tileTipo(r.a.tipo, 22)}<div class="grow"><b class="t" style="font-size:15px">${n}</b><div class="d">${fmtDataLonga(iso(new Date(r.a.ini)))} · ${r.info}</div></div><b class="ac" style="font-size:19px;letter-spacing:-.02em">${r.v}</b></div></button>`).join('')
     + '<p class="tiny mut">Tempos de 5 e 10 km: melhor sequência de km seguidos nas corridas com GPS; nas manuais, pelo ritmo médio.</p>'
     : '<div class="vazio">Registre atividades com distância para ver seus recordes.</div>';
   return h;
@@ -2206,20 +2248,20 @@ function vPerfil() {
     <div class="grid3 mt small"><div><span style="color:var(--prot)">Proteína</span><br><b>${m.prot} g</b></div><div><span style="color:var(--carb)">Carboidrato</span><br><b>${m.carb} g</b></div><div><span style="color:var(--gord)">Gordura</span><br><b>${m.gord} g</b></div></div>
     <div class="grid2 mt small"><div><span class="blue">Água</span><br><b>${nf(m.agua / 1000, 1)} L</b></div><div><span class="sub">Fibras</span><br><b>${m.fibra} g</b></div></div></div>
   <div class="card">
-    <button class="item" style="width:100%" data-act="editarRefeicoes">${ic('dieta', 20)}<div class="grow" style="text-align:left"><div class="t">Refeições do dia</div><div class="d">${S.refeicoes.map(r => esc(r.nome)).join(', ')}</div></div>${ic('dir', 18)}</button>
-    <button class="item" style="width:100%" data-act="suplementos">${ic('pilula', 20)}<div class="grow" style="text-align:left"><div class="t">Suplementos e estoque</div><div class="d">${S.suplementos.length ? S.suplementos.map(s => esc(s.nome)).join(', ') : 'Nenhum cadastrado'}</div></div>${ic('dir', 18)}</button>
-    <button class="item" style="width:100%" data-act="prefsAlim">${ic('dieta', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências alimentares</div><div class="d">${S.prefs && (S.prefs.exclui.length || S.prefs.naoGosto.length) ? esc([...S.prefs.exclui.map(k => (GRUPOS_ALIM.find(g => g[0] === k) || [k, k])[1].replace(/^\S+ /, '')), ...S.prefs.naoGosto.map(id => nomeCurto(id).split(' ')[0])].join(', ')) : 'O que você não come, para o cardápio'}</div></div>${ic('dir', 18)}</button>
-    <button class="item" style="width:100%" data-act="copos">${ic('gota', 20)}<div class="grow" style="text-align:left"><div class="t">Botões de água</div><div class="d">${S.config.copos.map(fmtMl).join(' · ')} · e "Outro"</div></div>${ic('dir', 18)}</button>
-    ${usaArLivre() ? `<button class="item" style="width:100%" data-act="cfgAtiv">${ic('corrida', 20)}<div class="grow" style="text-align:left"><div class="t">Atividades ao ar livre</div><div class="d">${S.config.metaKm ? 'Meta de ' + nf(S.config.metaKm, 1) + ' km por semana' : 'Sem meta semanal'} · calorias ${S.perfil.atividade === 1.2 && S.config.somarAtiv ? 'somam na meta' : 'só no resumo'}</div></div>${ic('dir', 18)}</button>` : ''}
-    <button class="item" style="width:100%" data-act="config">${ic('engrenagem', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências do treino</div><div class="d">Descanso padrão ${S.config.descanso}s · som ${S.config.som ? 'ligado' : 'desligado'} · vibração ${S.config.vibrar ? 'ligada' : 'desligada'}</div></div>${ic('dir', 18)}</button>
+    <button class="item" style="width:100%" data-act="editarRefeicoes">${tile('dieta', 'verde', 20)}<div class="grow" style="text-align:left"><div class="t">Refeições do dia</div><div class="d">${S.refeicoes.map(r => esc(r.nome)).join(', ')}</div></div>${ic('dir', 18)}</button>
+    <button class="item" style="width:100%" data-act="suplementos">${tile('pilula', 'roxo', 20)}<div class="grow" style="text-align:left"><div class="t">Suplementos e estoque</div><div class="d">${S.suplementos.length ? S.suplementos.map(s => esc(s.nome)).join(', ') : 'Nenhum cadastrado'}</div></div>${ic('dir', 18)}</button>
+    <button class="item" style="width:100%" data-act="prefsAlim">${tile('dieta', 'verde', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências alimentares</div><div class="d">${S.prefs && (S.prefs.exclui.length || S.prefs.naoGosto.length) ? esc([...S.prefs.exclui.map(k => (GRUPOS_ALIM.find(g => g[0] === k) || [k, k])[1].replace(/^\S+ /, '')), ...S.prefs.naoGosto.map(id => nomeCurto(id).split(' ')[0])].join(', ')) : 'O que você não come, para o cardápio'}</div></div>${ic('dir', 18)}</button>
+    <button class="item" style="width:100%" data-act="copos">${tile('gota', 'azul', 20)}<div class="grow" style="text-align:left"><div class="t">Botões de água</div><div class="d">${S.config.copos.map(fmtMl).join(' · ')} · e "Outro"</div></div>${ic('dir', 18)}</button>
+    ${usaArLivre() ? `<button class="item" style="width:100%" data-act="cfgAtiv">${tile('corrida', 'amarelo', 20)}<div class="grow" style="text-align:left"><div class="t">Atividades ao ar livre</div><div class="d">${S.config.metaKm ? 'Meta de ' + nf(S.config.metaKm, 1) + ' km por semana' : 'Sem meta semanal'} · calorias ${S.perfil.atividade === 1.2 && S.config.somarAtiv ? 'somam na meta' : 'só no resumo'}</div></div>${ic('dir', 18)}</button>` : ''}
+    <button class="item" style="width:100%" data-act="config">${tile('engrenagem', 'laranja', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências do treino</div><div class="d">Descanso padrão ${S.config.descanso}s · som ${S.config.som ? 'ligado' : 'desligado'} · vibração ${S.config.vibrar ? 'ligada' : 'desligada'}</div></div>${ic('dir', 18)}</button>
   </div>
   <div class="sec-h"><h3>Seus dados</h3></div>
   <div class="card">
-    <button class="item" style="width:100%" data-act="exportarExcel">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Exportar para Excel</div><div class="d">Peso, medidas, diário alimentar, treinos, atividades e fichas</div></div></button>
-    <button class="item" style="width:100%" data-act="backup">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar backup (.json)</div><div class="d">Cópia completa dos seus dados</div></div></button>
-    <button class="item" style="width:100%" data-act="restaurar">${ic('upload', 20)}<div class="grow" style="text-align:left"><div class="t">Restaurar backup</div><div class="d">Substitui os dados atuais</div></div></button>
-    ${!NATIVO ? `<a class="item" style="width:100%;color:inherit;text-decoration:none" href="${LINK_APK}">${ic('instalar', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar app Android (APK)</div><div class="d">Versão mais recente, gerada automaticamente pelo GitHub</div></div></a>` : ''}
-    ${INSTALAR ? `<button class="item" style="width:100%" data-act="instalar">${ic('instalar', 20)}<div class="grow" style="text-align:left"><div class="t">Instalar o app</div><div class="d">Ícone na tela inicial, abre em tela cheia</div></div></button>` : ''}
+    <button class="item" style="width:100%" data-act="exportarExcel">${tile('download', 'azul', 20)}<div class="grow" style="text-align:left"><div class="t">Exportar para Excel</div><div class="d">Peso, medidas, diário alimentar, treinos, atividades e fichas</div></div></button>
+    <button class="item" style="width:100%" data-act="backup">${tile('download', 'azul', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar backup (.json)</div><div class="d">Cópia completa dos seus dados</div></div></button>
+    <button class="item" style="width:100%" data-act="restaurar">${tile('upload', 'verde', 20)}<div class="grow" style="text-align:left"><div class="t">Restaurar backup</div><div class="d">Substitui os dados atuais</div></div></button>
+    ${!NATIVO ? `<a class="item" style="width:100%;color:inherit;text-decoration:none" href="${LINK_APK}">${tile('instalar', 'laranja', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar app Android (APK)</div><div class="d">Versão mais recente, gerada automaticamente pelo GitHub</div></div></a>` : ''}
+    ${INSTALAR ? `<button class="item" style="width:100%" data-act="instalar">${tile('instalar', 'laranja', 20)}<div class="grow" style="text-align:left"><div class="t">Instalar o app</div><div class="d">Ícone na tela inicial, abre em tela cheia</div></div></button>` : ''}
   </div>
   <div class="card small sub"><div class="row" style="align-items:flex-start">${ic('info', 18)}<div><b style="color:var(--txt)">Fontes e fórmulas</b><br>Alimentos: Tabela Brasileira de Composição de Alimentos (TACO, 4ª ed., NEPA/UNICAMP) e Open Food Facts (código de barras). Metabolismo: Mifflin-St Jeor. Força: 1RM de Epley. % de gordura: Marinha dos EUA. IMC: classificação da OMS. Estimativas não substituem nutricionista, médico ou educador físico.</div></div></div>
   <button class="btn perigo bl mt" data-act="sair">${ic('sair', 18)} ${MODO_NUVEM ? 'Sair da conta' : 'Sair do modo local'}</button>
@@ -2307,7 +2349,7 @@ function abrirFab() {
     .concat(usaAcademia() ? [['iniciarProximo', 'treino', 'Iniciar treino', 'var(--ac)']] : [], usaArLivre() ? [['novaAtiv', 'corrida', 'Atividade', 'var(--ac)']] : [],
       [['registrarPeso', 'balanca', 'Peso', 'var(--warn)'], ['registrarMedidas', 'regua', 'Medidas', 'var(--gord)'], ['novaFotoFab', 'camera', 'Foto de progresso', 'var(--carb)']]);
   abrirSheet({
-    render: () => `${cabecalho('Registrar')}<div class="grid3">${op.map(([a, i, t, c]) => `<button class="card dois c" style="margin:0;padding:16px 8px" data-act="${a}" data-v="250" data-fab="1"><div style="color:${c}">${ic(i, 28)}</div><div class="small b mt">${t}</div></button>`).join('')}</div>`,
+    render: () => `${cabecalho('Registrar')}<div class="grid3">${op.map(([a, i, t, c]) => `<button class="card dois c" style="margin:0;padding:16px 8px" data-act="${a}" data-v="250" data-fab="1"><span class="ico g" style="margin:0 auto;background:color-mix(in srgb, ${c} 16%, transparent);color:${c}">${ic(i, 26, 2.2)}</span><div class="small b mt">${t}</div></button>`).join('')}</div>`,
   });
 }
 
@@ -2464,6 +2506,7 @@ const A = {
     S.config.copos = l.map(Math.round); salvar('main'); fecharSheet(); render(); toast('Botões de água salvos');
   },
   // --- cardápio ---
+  atalhoCardapio: () => { fecharTodas(); VIEW = 'dieta'; SUB.dieta = 'cardapio'; render(); window.scrollTo(0, 0); },
   prefIni: ds => { const l = SUB.prefIni = SUB.prefIni || []; const i = l.indexOf(ds.v); i >= 0 ? l.splice(i, 1) : l.push(ds.v); render(); },
   criarCardapio: () => { S.prefs = { exclui: [...(SUB.prefIni || [])], naoGosto: [] }; gerarSemana(hojeISO()); render(); toast('Cardápio da semana pronto! 🍽️'); },
   cardDia: ds => { SUB.cardDia = ds.d; render(); },
