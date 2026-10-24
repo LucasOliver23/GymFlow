@@ -14,6 +14,15 @@ name: APK Android
 on:
   push:
     branches: [main]
+    # APK novo só quando muda algo nativo. Telas (index.html, dados/) chegam pela Vercel sem reinstalar.
+    paths:
+      - 'android-recursos/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'icons/**'
+      - 'manifest.json'
+      - '.github/workflows/apk.yml'
   pull_request:
   workflow_dispatch:
 

@@ -305,6 +305,17 @@ const novoId = () => Date.now().toString(36) + Math.random().toString(36).slice(
 const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const num = v => { if (v === '' || v == null) return null; const n = Number(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
 const clone = o => JSON.parse(JSON.stringify(o));
+const isoParaBr = s => { const [y, m, d] = String(s).split('-'); return d && m && y ? `${d}/${m}/${y}` : ''; };
+// Formata "18051992" como "18/05/1992" enquanto digita e devolve a data em ISO (ou '' se ainda não é uma data válida)
+function mascaraData(el) {
+  const n = el.value.replace(/\D/g, '').slice(0, 8);
+  const v = n.length > 4 ? `${n.slice(0, 2)}/${n.slice(2, 4)}/${n.slice(4)}` : n.length > 2 ? `${n.slice(0, 2)}/${n.slice(2)}` : n;
+  if (el.value !== v) el.value = v;
+  if (n.length !== 8) return '';
+  const d = +n.slice(0, 2), m = +n.slice(2, 4), y = +n.slice(4), dt = new Date(y, m - 1, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d || y < 1900 || iso(dt) > hojeISO()) return '';
+  return iso(dt);
+}
 const fmtDur = ms => { const m = Math.round(ms / 60000); return m < 60 ? `${m} min` : `${Math.floor(m / 60)}h${pad(m % 60)}`; };
 const fmtCron = ms => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600); return (h ? h + ':' : '') + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); };
 function tituloData(d) {
@@ -873,7 +884,7 @@ function desenharOnboarding() {
     <div class="lbl mb">Sexo biológico (usado no cálculo do metabolismo)</div>
     <div class="grid2">${[['M', 'Masculino'], ['F', 'Feminino']].map(([v, t]) => `<button class="opcao c ${p.sexo === v ? 'on' : ''}" data-act="obSet" data-k="sexo" data-v="${v}"><b>${t}</b></button>`).join('')}</div>`;
   if (OB.passo === 1) h = `<h2>Seu corpo hoje</h2><p class="sub mt mb">Pode ajustar depois no perfil.</p>
-    <label class="campo"><span>Data de nascimento</span><input type="date" data-ob="nasc" value="${esc(p.nasc)}" max="${hojeISO()}"></label>
+    <label class="campo"><span>Data de nascimento</span><input type="text" inputmode="numeric" autocomplete="bday" maxlength="10" placeholder="dd/mm/aaaa" data-nasc="ob" value="${esc(p.nasc ? isoParaBr(p.nasc) : (p.nascTxt || ''))}"></label>
     <div class="grid2"><label class="campo"><span>Altura (cm)</span><input type="number" inputmode="numeric" data-ob="altura" value="${esc(p.altura)}" placeholder="175"></label>
     <label class="campo"><span>Peso (kg)</span><input type="number" inputmode="decimal" step="0.1" data-ob="peso" value="${esc(p.peso)}" placeholder="80,0"></label></div>`;
   if (OB.passo === 2) h = `<h2>Como você gosta de se exercitar?</h2><p class="sub mt mb">O app se adapta ao seu estilo. Dá para mudar depois no perfil.</p>
@@ -911,7 +922,8 @@ function validarOB() {
   const p = perfilOB();
   if (OB.passo === 0) { if (!p.nome) return 'Digite seu nome.'; if (!p.sexo) return 'Escolha o sexo.'; }
   if (OB.passo === 1) {
-    if (!p.nasc || idade(p.nasc) < 13 || idade(p.nasc) > 100) return 'Data de nascimento inválida.';
+    if (!p.nasc) return 'Digite a data de nascimento completa (dd/mm/aaaa).';
+    if (idade(p.nasc) < 13 || idade(p.nasc) > 100) return 'Data de nascimento inválida.';
     if (!p.altura || p.altura < 120 || p.altura > 230) return 'Altura deve estar entre 120 e 230 cm.';
     if (!p.peso || p.peso < 30 || p.peso > 300) return 'Peso deve estar entre 30 e 300 kg.';
   }
@@ -2220,7 +2232,7 @@ function abrirEditarPerfil() {
     render: () => `${cabecalho('Editar perfil')}
       <label class="campo"><span>Nome</span><input data-in="perfilCampo" data-k="nome" value="${esc(st.nome)}"></label>
       <div class="grid2"><label class="campo"><span>Sexo</span><select data-in="perfilCampo" data-k="sexo"><option value="M" ${st.sexo === 'M' ? 'selected' : ''}>Masculino</option><option value="F" ${st.sexo === 'F' ? 'selected' : ''}>Feminino</option></select></label>
-      <label class="campo"><span>Nascimento</span><input type="date" data-in="perfilCampo" data-k="nasc" value="${esc(st.nasc)}"></label>
+      <label class="campo"><span>Nascimento</span><input type="text" inputmode="numeric" autocomplete="bday" maxlength="10" placeholder="dd/mm/aaaa" data-nasc="perfil" value="${esc(st.nasc ? isoParaBr(st.nasc) : '')}"></label>
       <label class="campo"><span>Altura (cm)</span><input type="number" data-in="perfilCampo" data-k="altura" value="${esc(st.altura)}"></label>
       <label class="campo"><span>Meta de peso (kg)</span><input type="number" step="0.1" data-in="perfilCampo" data-k="metaPeso" value="${esc(st.metaPeso ?? '')}"></label></div>
       <label class="campo"><span>Nível de atividade</span><select data-in="perfilCampo" data-k="atividade">${ATIVIDADES.map(a => `<option value="${a.f}" ${a.f === st.atividade ? 'selected' : ''}>${a.t} – ${a.d}</option>`).join('')}</select></label>
@@ -2796,6 +2808,11 @@ document.addEventListener('click', e => {
 });
 const aoDigitar = e => {
   const t = e.target;
+  if (t.dataset.nasc) { // data digitada: dd/mm/aaaa com as barras entrando sozinhas
+    const isoNasc = mascaraData(t);
+    if (t.dataset.nasc === 'ob') { OB.p.nasc = isoNasc; OB.p.nascTxt = t.value; } else topo().st.nasc = isoNasc;
+    return;
+  }
   if (t.dataset.ob !== undefined) { OB.p[t.dataset.ob] = t.value; return; }
   const k = t.dataset.in; if (k && I[k]) I[k](t.dataset, t, e);
 };
