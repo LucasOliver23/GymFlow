@@ -6,10 +6,11 @@ App PWA (instalável no celular) que junta **dieta, treino e evolução** em um 
 
 | Área | Recursos |
 |---|---|
-| **Hoje** | Semana com ✓ nos dias treinados, sequência 🔥, anel de calorias restantes, barras de macros, treino do dia, água (+250/+500), suplementos com controle de estoque e aviso de "hora de repor", refeições com meta própria, peso atual |
+| **Hoje** | Semana com ✓ nos dias treinados, sequência 🔥, anel de calorias restantes, barras de macros, treino do dia, água com botões configuráveis (padrão 250 ml, 500 ml, 600 ml e 1 L), "Outro" valor e desfazer o último registro, atividade do dia com barra da meta semanal de km, suplementos com controle de estoque e aviso de "hora de repor", refeições com meta própria, peso atual |
 | **Dieta** | 597 alimentos da **tabela TACO (UNICAMP)**, busca sem acento, filtro por categoria, recentes, alimentos do rótulo, **leitor de código de barras** (Open Food Facts), refeições favoritas, copiar refeição/dia anterior, distribuição P/C/G, fibras e sódio. Quando a fonte não tem o dado, o app mostra **"não encontrado"** (nada é inventado) |
 | **Treino** | 118 exercícios em 13 grupos, 4 modelos prontos (ABC, Full body, Superior/Inferior, Push/Pull/Legs), editor de fichas, rodízio automático do próximo treino, modo treino com série/peso/reps, carga da última vez preenchida, cronômetro de descanso (som + vibração), **recordes automáticos** (1RM de Epley), link para vídeo de execução, histórico e gráfico por exercício |
-| **Evolução** | Peso com gráfico, meta, IMC, tendência semanal e previsão de quando chega na meta; 12 medidas corporais com Top 3 mudanças e **% de gordura estimado** (Marinha dos EUA); evolução de carga e volume por grupo muscular; fotos de progresso com **antes × depois**; 12 conquistas |
+| **Ar livre** | Caminhada, corrida e bike: registro manual de tempo e distância, ritmo (min/km) ou velocidade (km/h na bike), calorias estimadas (Compendium of Physical Activities), meta semanal de km. Quem escolhe o estilo "Ar livre" no cadastro vê o app sem fichas de academia; "Os dois" alterna Academia e Ar livre na aba Treino |
+| **Evolução** | Peso com gráfico, meta, IMC, tendência semanal e previsão de quando chega na meta; atividades com totais da semana e do mês, km por semana, gráfico de ritmo e recordes (5 km, 10 km, maior distância, maior pedalada); 12 medidas corporais com Top 3 mudanças e **% de gordura estimado** (Marinha dos EUA); evolução de carga e volume por grupo muscular; fotos de progresso com **antes × depois**; conquistas de academia, dieta e ar livre |
 | **Perfil** | Metas automáticas (Mifflin-St Jeor) ou manuais (plano do nutricionista), refeições configuráveis, preferências de treino, **exportar Excel**, backup/restauração em JSON, botão de olho para ocultar peso e medidas |
 
 As metas sempre fecham: calorias = proteína × 4 + carboidrato × 4 + gordura × 9.
@@ -43,7 +44,7 @@ Sem Firebase configurado, o app roda em **modo local**: tudo fica salvo só naqu
 4. **Configurações do projeto → Seus apps → Web (</>)** → registre o app e copie os valores para `firebase-config.js`.
 5. Em **Authentication → Configurações → Domínios autorizados**, adicione o domínio do Vercel (ex.: `gymflow.vercel.app`). `localhost` já vem autorizado (é o endereço interno do APK no modo embutido).
 
-Os dados de cada usuário ficam em `users/{uid}` (perfil, metas, fichas, pesos, medidas, alimentos e exercícios próprios) com as subcoleções `dias` (diário alimentar e água), `sessoes` (treinos) e `fotos`. O navegador guarda só uma cópia de cache, e o Firestore funciona offline e sincroniza quando a internet volta.
+Os dados de cada usuário ficam em `users/{uid}` (perfil, metas, fichas, pesos, medidas, alimentos e exercícios próprios) com as subcoleções `dias` (diário alimentar e água), `sessoes` (treinos), `atividades` (caminhada, corrida e bike) e `fotos`. O navegador guarda só uma cópia de cache, e o Firestore funciona offline e sincroniza quando a internet volta.
 
 ## APK Android automático (GitHub Actions)
 
@@ -76,6 +77,6 @@ Para gerar o projeto Android no PC (precisa do Android Studio): `npm install` e 
 
 - Alimentos: *Tabela Brasileira de Composição de Alimentos – TACO*, 4ª ed. revisada e ampliada, NEPA/UNICAMP, 2011 (CSV de [raulfdm/taco-api](https://github.com/raulfdm/taco-api)).
 - Código de barras: [Open Food Facts](https://world.openfoodfacts.org), base colaborativa. O app pede para conferir com o rótulo antes de salvar.
-- Metabolismo basal: Mifflin-St Jeor. Força máxima: 1RM de Epley. % de gordura: método da Marinha dos EUA (Hodgdon & Beckett). IMC: classificação da OMS.
+- Metabolismo basal: Mifflin-St Jeor. Força máxima: 1RM de Epley. Calorias das atividades: MET por velocidade do *Compendium of Physical Activities* (Ainsworth et al., 2011) × peso × tempo. % de gordura: método da Marinha dos EUA (Hodgdon & Beckett). IMC: classificação da OMS.
 
 As estimativas não substituem nutricionista, médico ou educador físico.
