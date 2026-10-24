@@ -9,7 +9,7 @@ App PWA (instalável no celular) que junta **dieta, treino e evolução** em um 
 | **Hoje** | Semana com ✓ nos dias treinados, sequência 🔥, anel de calorias restantes, barras de macros, treino do dia, água com botões configuráveis (padrão 250 ml, 500 ml, 600 ml e 1 L), "Outro" valor e desfazer o último registro, atividade do dia com barra da meta semanal de km, suplementos com controle de estoque e aviso de "hora de repor", refeições com meta própria, peso atual |
 | **Dieta** | 597 alimentos da **tabela TACO (UNICAMP)**, busca sem acento, filtro por categoria, recentes, alimentos do rótulo, **leitor de código de barras** (Open Food Facts), refeições favoritas, copiar refeição/dia anterior, distribuição P/C/G, fibras e sódio. Quando a fonte não tem o dado, o app mostra **"não encontrado"** (nada é inventado) |
 | **Treino** | 118 exercícios em 13 grupos, 4 modelos prontos (ABC, Full body, Superior/Inferior, Push/Pull/Legs), editor de fichas, rodízio automático do próximo treino, modo treino com série/peso/reps, carga da última vez preenchida, cronômetro de descanso (som + vibração), **recordes automáticos** (1RM de Epley), link para vídeo de execução, histórico e gráfico por exercício |
-| **Ar livre** | Caminhada, corrida e bike: registro manual de tempo e distância, ritmo (min/km) ou velocidade (km/h na bike), calorias estimadas (Compendium of Physical Activities), meta semanal de km. Quem escolhe o estilo "Ar livre" no cadastro vê o app sem fichas de academia; "Os dois" alterna Academia e Ar livre na aba Treino |
+| **Ar livre** | Caminhada, corrida e bike: **GPS no app Android** (mede com a tela desligada, notificação fixa, pausa automática, aviso por voz a cada km, parciais por km e mapa do percurso no resumo) ou registro manual de tempo e distância, ritmo (min/km) ou velocidade (km/h na bike), calorias estimadas (Compendium of Physical Activities), meta semanal de km. Quem escolhe o estilo "Ar livre" no cadastro vê o app sem fichas de academia; "Os dois" alterna Academia e Ar livre na aba Treino |
 | **Evolução** | Peso com gráfico, meta, IMC, tendência semanal e previsão de quando chega na meta; atividades com totais da semana e do mês, km por semana, gráfico de ritmo e recordes (5 km, 10 km, maior distância, maior pedalada); 12 medidas corporais com Top 3 mudanças e **% de gordura estimado** (Marinha dos EUA); evolução de carga e volume por grupo muscular; fotos de progresso com **antes × depois**; conquistas de academia, dieta e ar livre |
 | **Perfil** | Metas automáticas (Mifflin-St Jeor) ou manuais (plano do nutricionista), refeições configuráveis, preferências de treino, **exportar Excel**, backup/restauração em JSON, botão de olho para ocultar peso e medidas |
 
@@ -26,7 +26,7 @@ manifest.json, sw.js, icons/   PWA instalável e offline
 firestore.rules      Regras de segurança do Firestore
 vercel.json          Cabeçalhos para o deploy
 Abrir_GymFlow.bat    Abre o app no Windows com dois cliques
-package.json, scripts/preparar-android.mjs, android-recursos/   Geração do APK (Capacitor)
+package.json, scripts/preparar-android.mjs, android-recursos/   Geração do APK (Capacitor) e GPS nativo em Kotlin
 .github/workflows/apk.yml   APK automático no GitHub Actions
 ```
 
@@ -69,6 +69,8 @@ Link fixo da última versão: `https://github.com/LucasOliver23/GymFlow/releases
    cada deploy do Vercel atualiza o app na hora, sem reinstalar. Sem `APP_URL`, os arquivos vão dentro do APK e cada atualização é um APK novo.
 
 ### Recursos só do app Android
+GPS das atividades ao ar livre: plugin nativo em Kotlin (`android-recursos/java/br/com/lucasoliver/gymflow/gps/`, adaptado do GPS do MotoristaPro), com serviço em primeiro plano, filtro de precisão e de saltos, pausa automática e cópia de segurança se o Android fechar o app no meio. O `preparar-android.mjs` copia esses arquivos, liga o Kotlin e registra o plugin. Mapa do percurso: OpenStreetMap (Leaflet); sem internet, mostra só o traçado.
+
 Botão voltar fecha janelas e volta para Hoje, notificação de fim do descanso com a tela desligada, Excel e backup abrem o menu de compartilhar (WhatsApp, Drive, Arquivos).
 
 Para gerar o projeto Android no PC (precisa do Android Studio): `npm install` e depois `npm run android`; o projeto fica em `android/`.

@@ -62,7 +62,9 @@ jobs:
           ANDROID_KEY_SENHA: ${{ secrets.ANDROID_KEY_SENHA }}
         run: |
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/gymflow.jks"
-          (cd android && ./gradlew assembleRelease --no-daemon --stacktrace)
+          set -o pipefail
+          # Erros de compilação viram avisos visíveis no resumo da execução
+          (cd android && ./gradlew assembleRelease --no-daemon --stacktrace) 2>&1 | tee "$RUNNER_TEMP/gradle.log" || { grep -E -A2 '^e: |: error:|What went wrong' "$RUNNER_TEMP/gradle.log" | grep -v '^--' | head -40 | sed 's/^/::error title=Erro na compilação::/'; exit 1; }
           BT=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
           "$BT/zipalign" -p -f 4 android/app/build/outputs/apk/release/app-release-unsigned.apk "$RUNNER_TEMP/alinhado.apk"
           "$BT/apksigner" sign --ks "$RUNNER_TEMP/gymflow.jks" --ks-pass env:ANDROID_KEYSTORE_SENHA \
@@ -75,7 +77,8 @@ jobs:
         if: env.TEM_CHAVE != 'true'
         run: |
           echo "::warning title=APK sem chave fixa::Configure os secrets ANDROID_KEYSTORE_* para poder atualizar o app por cima sem desinstalar."
-          (cd android && ./gradlew assembleDebug --no-daemon --stacktrace)
+          set -o pipefail
+          (cd android && ./gradlew assembleDebug --no-daemon --stacktrace) 2>&1 | tee "$RUNNER_TEMP/gradle.log" || { grep -E -A2 '^e: |: error:|What went wrong' "$RUNNER_TEMP/gradle.log" | grep -v '^--' | head -40 | sed 's/^/::error title=Erro na compilação::/'; exit 1; }
           cp android/app/build/outputs/apk/debug/app-debug.apk GymFlow.apk
 
       - name: Anexar APK à execução

@@ -75,10 +75,44 @@ const PERMISSOES = [
   '<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />',
   '<uses-permission android:name="android.permission.USE_EXACT_ALARM" />',
   '<uses-feature android:name="android.hardware.camera" android:required="false" />',
+  // GPS das atividades ao ar livre (serviço em primeiro plano, iniciado com o app aberto)
+  '<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />',
+  '<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />',
+  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />',
+  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />',
+  '<uses-feature android:name="android.hardware.location.gps" android:required="false" />',
 ];
 const manifesto = p('android', 'app', 'src', 'main', 'AndroidManifest.xml');
 const faltando = PERMISSOES.filter(l => !fs.readFileSync(manifesto, 'utf8').includes(l));
-if (faltando.length) trocar(manifesto, /<\/manifest>\s*$/, `    ${faltando.join('\n    ')}\n</manifest>\n`, 'permissões (câmera, vibração, notificação do descanso)');
+if (faltando.length) trocar(manifesto, /<\/manifest>\s*$/, `    ${faltando.join('\n    ')}\n</manifest>\n`, 'permissões (câmera, vibração, notificações, GPS)');
+const SERVICO_GPS = 'android:name="br.com.lucasoliver.gymflow.gps.AtividadeService"';
+if (!fs.readFileSync(manifesto, 'utf8').includes(SERVICO_GPS)) {
+  trocar(manifesto, /(\s*)<\/application>/, `$1    <service ${SERVICO_GPS} android:exported="false" android:foregroundServiceType="location" />$1</application>`, 'serviço do GPS das atividades');
+}
+
+// Plugin nativo de GPS em Kotlin (android-recursos/java): mesmo esquema do GPS do MotoristaPro
+fs.cpSync(p('android-recursos', 'java'), p('android', 'app', 'src', 'main', 'java'), { recursive: true, force: true });
+console.log('  ✓ código Kotlin do GPS');
+const KOTLIN = '1.9.25'; // a mesma versão que o Capacitor 7 usa internamente
+const raizGradle = p('android', 'build.gradle');
+if (!fs.readFileSync(raizGradle, 'utf8').includes('kotlin-gradle-plugin')) {
+  trocar(raizGradle, /(classpath 'com\.android\.tools\.build:gradle:[^']+')/, `$1\n        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:${KOTLIN}'`, 'Kotlin no projeto');
+}
+const appGradle = p('android', 'app', 'build.gradle');
+if (!fs.readFileSync(appGradle, 'utf8').includes("apply plugin: 'kotlin-android'")) {
+  trocar(appGradle, /(apply plugin: 'com\.android\.application')/, `$1\napply plugin: 'kotlin-android'`, 'Kotlin no app');
+  fs.appendFileSync(appGradle, `\n// gymflow-kotlin: Kotlin compila para a mesma versão do Java do Capacitor\nandroid {\n    kotlinOptions {\n        jvmTarget = '21'\n    }\n}\n`);
+}
+const atividade = p('android', 'app', 'src', 'main', 'java', ...APP_ID.split('.'), 'MainActivity.java');
+if (!fs.readFileSync(atividade, 'utf8').includes('GpsAtividadePlugin')) {
+  trocar(atividade, /public class MainActivity extends BridgeActivity \{\s*\}/, `public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(android.os.Bundle savedInstanceState) {
+        registerPlugin(br.com.lucasoliver.gymflow.gps.GpsAtividadePlugin.class);
+        super.onCreate(savedInstanceState);
+    }
+}`, 'registro do plugin de GPS');
+}
 
 // Barras do sistema pretas, combinando com o app
 const estilos = path.join(RES, 'values', 'styles.xml');
