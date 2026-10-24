@@ -28,6 +28,11 @@ class CalculoPercurso(
     private var ancLon = 0.0
     private var ancEm = 0L
     private var temAncora = false
+    // Leitura anterior do GPS (bruta): para pegar saltos mesmo depois de ficar parado
+    private var fixLat = 0.0
+    private var fixLon = 0.0
+    private var fixEm = 0L
+    private var temFix = false
     /** Hora do último passo aceito (ou da retomada): base do cronômetro ao vivo. */
     private var ultimoMovEm = inicioEm
 
@@ -64,6 +69,17 @@ class CalculoPercurso(
         if (pausadoManual) return 0
         if (precisaoM != null && precisaoM > PRECISAO_MAX_M) return 0
         if (!temSinal) { temSinal = true; ultimoMovEm = em }
+        // Salto impossível em relação à leitura anterior: pula este trecho e recomeça a partir daqui
+        if (temFix) {
+            val dtFix = (em - fixEm) / 1000.0
+            val dFix = distancia(fixLat, fixLon, lat, lon)
+            if (dtFix > 0 && dFix > PASSO_MIN_M && dFix / dtFix > velocidadeMax) {
+                fixLat = lat; fixLon = lon; fixEm = em
+                ancLat = lat; ancLon = lon; ancEm = em; temAncora = true
+                return 0
+            }
+        }
+        fixLat = lat; fixLon = lon; fixEm = em; temFix = true
         if (!temAncora) {
             ancLat = lat; ancLon = lon; ancEm = em; temAncora = true
             if (pontos.isEmpty()) pontos.add(doubleArrayOf(lat, lon))
@@ -116,6 +132,7 @@ class CalculoPercurso(
         movMs = tempoMovimento(agora)
         pausadoManual = true
         temAncora = false        // o que andar durante a pausa não conta
+        temFix = false
         janela.clear()
     }
 

@@ -64,6 +64,10 @@ a{color:var(--ac)}
 .tipo-ativ button{background:var(--card2);border:1.5px solid transparent;border-radius:14px;padding:12px 6px;text-align:center;font-weight:600;font-size:13.5px}
 .tipo-ativ button.on{border-color:var(--ac);background:var(--acbg)}
 .tipo-ativ .em{display:block;font-size:24px;margin-bottom:4px}
+.mapa-ativ{height:230px;border-radius:16px;overflow:hidden;background:var(--card2);margin-top:4px}
+.mapa-ativ .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.85) contrast(.9)}
+.mapa-ativ .leaflet-control-attribution{font-size:10px;background:rgba(0,0,0,.6);color:#aaa}
+.mapa-ativ .leaflet-control-attribution a{color:#ccc}
 .sync{width:8px;height:8px;border-radius:50%;background:var(--ac);display:inline-block;margin-right:6px}
 .sync.pend{background:var(--warn)} .sync.erro{background:var(--red)} .sync.local{background:var(--mut)}
 main#main{padding:4px 16px calc(var(--nav) + 40px + var(--safe-b))}
@@ -934,6 +938,7 @@ function entrarApp() {
   render();
   setSync(MODO_NUVEM ? (sync.pend.size ? 'pend' : 'ok') : 'local');
   if (SA) abrirSessao();
+  else retomarGpsAoAbrir();
 }
 function render() {
   if (!S || !S.perfil) return;
@@ -1012,12 +1017,17 @@ function barraMetaKm() {
   return `<div class="mt"><div class="row sb small"><span class="sub">Meta da semana</span><span><b>${nf(km, 1)}</b> / ${nf(meta, 1)} km${km >= meta ? ' <span class="ac">✓</span>' : ''}</span></div><div style="margin-top:6px">${barra(km / meta)}</div></div>`;
 }
 const linhaAtiv = a => `<button class="item" style="width:100%;text-align:left" data-act="verAtiv" data-id="${a.id}"><span style="font-size:24px">${TIPOS_ATIV[a.tipo].em}</span><div class="grow"><div class="t">${TIPOS_ATIV[a.tipo].t}${a.km ? ' · ' + nf(a.km, 2) + ' km' : ''}</div><div class="d">${fmtTempo(a.dur)}${leituraAtiv(a) ? ' · ' + leituraAtiv(a) : ''} · ${nf(a.kcal)} kcal</div></div>${ic('dir', 18)}</button>`;
+function cardGpsAndamento() {
+  const e = GPSV.e || {}, T = TIPOS_ATIV[e.tipo] || TIPOS_ATIV.corrida;
+  return `<div class="card" style="border-color:rgba(0,208,132,.4)"><div class="row sb"><div><div class="lbl ac">${e.pausado ? 'Pausada' : 'Gravando pelo GPS'}</div><h3>${T.em} ${T.t}</h3><div class="small sub">${nf((e.metros || 0) / 1000, 2)} km · ${fmtCron(e.movMs || 0)}</div></div><button class="btn" data-act="gpsAbrir">Abrir</button></div></div>`;
+}
 function cardAtividades() {
+  if (GPS && GPSV.e && GPSV.e.ativo && DIA === hojeISO()) return cardGpsAndamento();
   const hoje = ativDoDia(DIA);
   if (!usaArLivre() && !hoje.length) return '';
   const titulo = hoje.length ? `<div class="lbl ac">${ic('check', 14, 3)} Atividade${hoje.length > 1 ? 's' : ''} ${DIA === hojeISO() ? 'de hoje' : 'do dia'}</div>` : `<div class="lbl">${ic('corrida', 14)} Ar livre</div>`;
   return `<div class="card"><div class="row sb"><div class="grow">${titulo}${hoje.length ? '' : `<h3>${DIA === hojeISO() ? 'Bora se mexer?' : 'Nenhuma atividade'}</h3><div class="small sub">Caminhada, corrida ou bike</div>`}</div>
-    ${DIA <= hojeISO() ? `<button class="btn ${hoje.length ? 'sec peq' : ''}" data-act="novaAtiv">${ic('mais', 14)} ${hoje.length ? 'Outra' : 'Registrar'}</button>` : ''}</div>
+    ${DIA <= hojeISO() ? `<button class="btn ${hoje.length ? 'sec peq' : ''}" data-act="${GPS && DIA === hojeISO() ? 'escolherAtiv' : 'novaAtiv'}">${ic(GPS && DIA === hojeISO() ? 'play' : 'mais', 14)} ${hoje.length ? 'Outra' : GPS && DIA === hojeISO() ? 'Iniciar' : 'Registrar'}</button>` : ''}</div>
     ${hoje.length ? `<div class="mt">${hoje.map(linhaAtiv).join('')}</div>` : ''}${barraMetaKm()}</div>`;
 }
 const fmtMl = ml => ml >= 1000 ? nf(ml / 1000, ml % 1000 ? 1 : 0) + ' L' : ml + ' ml';
@@ -1290,9 +1300,10 @@ function listaExHTML(f, acao) {
 // --- Ar livre: caminhada, corrida e bike ---
 function treinoArLivre() {
   const h0 = hojeISO(), sem = totaisAtiv(iniSemana(), h0), mes = totaisAtiv(h0.slice(0, 8) + '01', h0);
-  let h = `<div class="card"><div class="card-h"><h3>Registrar atividade</h3></div>
-    <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="novaAtiv" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
-    <p class="tiny mut mt">Informe tempo e distância depois da atividade. A medição automática por GPS chega na próxima versão do app Android.</p></div>`;
+  let h = (GPSV.e && GPSV.e.ativo) ? cardGpsAndamento() : `<div class="card"><div class="card-h"><h3>${GPS ? 'Iniciar com GPS' : 'Registrar atividade'}</h3></div>
+    <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="${GPS ? 'gpsIniciar' : 'novaAtiv'}" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+    ${GPS ? `<button class="btn sec bl mt" data-act="novaAtiv">${ic('lapis', 16)} Registrar sem GPS (manual)</button>`
+      : `<p class="tiny mut mt">Informe tempo e distância depois da atividade. ${NATIVO ? 'Atualize o app para medir pelo GPS.' : 'No app Android, o GPS mede tudo sozinho.'}</p>`}</div>`;
   h += `<div class="card"><div class="card-h"><h3>Meta semanal</h3><button class="link" data-act="cfgAtiv">${S.config.metaKm ? 'Editar' : 'Definir'}</button></div>
     ${S.config.metaKm ? barraMetaKm() : '<div class="small sub">Defina quantos km quer fazer por semana e acompanhe a barra na tela Hoje.</div>'}</div>`;
   h += `<div class="grid3 mb">${[[sem.km, 'km na semana', 'ac'], [mes.km, 'km no mês', ''], [mes.n, 'atividades no mês', '']].map(([v, t, c], i) => `<div class="card c" style="margin:0"><div class="big ${c}" style="font-size:24px">${nf(v, i < 2 ? 1 : 0)}</div><div class="tiny sub">${t}</div></div>`).join('')}</div>`;
@@ -1341,10 +1352,20 @@ function abrirDetalheAtiv(id) {
   const T = TIPOS_ATIV[a.tipo], d = new Date(a.ini);
   abrirSheet({
     render: () => `${cabecalho(T.em + ' ' + T.t)}
-      <div class="small sub">${DIAS_LONGO[d.getDay()]}, ${fmtDataLonga(iso(d))} · ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${a.origem === 'gps' ? ' · GPS' : ' · registro manual'}</div>
-      <div class="grid2 mt">${[['Distância', a.km ? nf(a.km, 2) + ' km' : '–'], ['Tempo', fmtTempo(a.dur)], [a.tipo === 'bike' ? 'Velocidade média' : 'Ritmo médio', leituraAtiv(a) || '–'], ['Calorias (estim.)', nf(a.kcal) + ' kcal']].map(([t, v]) => `<div class="card dois c" style="margin:0"><div class="lbl">${t}</div><b style="font-size:20px">${v}</b></div>`).join('')}</div>
+      <div class="small sub mb">${DIAS_LONGO[d.getDay()]}, ${fmtDataLonga(iso(d))} · ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${a.origem === 'gps' ? ' · GPS' : ' · registro manual'}</div>
+      ${resumoAtivHTML(a)}
       ${a.notas ? `<p class="small mt">${esc(a.notas)}</p>` : ''}
       <div class="row mt2"><button class="btn perigo" data-act="apagarAtiv" data-id="${a.id}">${ic('lixo', 18)}</button><button class="btn sec grow" data-act="editarAtiv" data-id="${a.id}">${ic('lapis', 18)} Editar</button></div>`,
+    cls: a.pontos && a.pontos.length > 1 ? 'alto' : '',
+    depois: () => desenharMapa(a.pontos),
+  });
+}
+function abrirEscolherAtiv() {
+  abrirSheet({
+    render: () => `${cabecalho('Nova atividade')}
+      <div class="lbl mb">Medir pelo GPS</div>
+      <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="gpsIniciar" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+      <button class="btn sec bl mt" data-act="novaAtiv">${ic('lapis', 16)} Registrar sem GPS (manual)</button>`,
   });
 }
 function abrirCfgAtiv() {
@@ -1357,6 +1378,9 @@ function abrirCfgAtiv() {
       <div class="lbl mb">Calorias das atividades na meta do dia</div>
       ${sedentario ? `<button class="item" style="width:100%" data-act="cfgToggle" data-k="somarAtiv"><div class="grow" style="text-align:left"><div class="t">Somar na meta de calorias</div><div class="d">Correu 400 kcal? A meta do dia sobe 400 kcal (no carboidrato).</div></div><span class="chip ${S.config.somarAtiv ? 'on' : ''}">${S.config.somarAtiv ? 'Ligado' : 'Desligado'}</span></button>`
       : `<p class="small sub">Seu nível de atividade (${esc((ATIVIDADES.find(x => x.f === S.perfil.atividade) || {}).t || '')}) já inclui o exercício na meta de calorias, então as atividades aparecem só no resumo, sem contar duas vezes. Para somar, mude o nível para "Sedentário" no perfil.</p>`}
+      ${GPS ? `<div class="lbl mb mt">GPS</div>
+      <button class="item" style="width:100%" data-act="cfgToggleSim" data-k="vozKm"><div class="grow" style="text-align:left"><div class="t">Aviso por voz a cada km</div><div class="d">Tempo e ritmo do último km, pelo fone</div></div><span class="chip ${S.config.vozKm !== false ? 'on' : ''}">${S.config.vozKm !== false ? 'Ligado' : 'Desligado'}</span></button>
+      <button class="item" style="width:100%" data-act="cfgToggleSim" data-k="pausaAuto"><div class="grow" style="text-align:left"><div class="t">Pausa automática</div><div class="d">Para de contar o tempo quando você para (semáforo, por exemplo)</div></div><span class="chip ${S.config.pausaAuto !== false ? 'on' : ''}">${S.config.pausaAuto !== false ? 'Ligado' : 'Desligado'}</span></button>` : ''}
       <button class="btn bl mt" data-act="salvarCfgAtiv">Salvar</button>`,
   });
 }
@@ -1379,6 +1403,141 @@ function abrirCopos() {
       <div class="grid2">${st.l.map((v, i) => `<label class="campo"><span>Botão ${i + 1} (ml)</span><input type="number" inputmode="numeric" data-in="coposCampo" data-i="${i}" value="${esc(v)}"></label>`).join('')}</div>
       <div class="row"><button class="btn sec" data-act="coposPadrao">Padrão</button><button class="btn grow" data-act="salvarCopos">Salvar</button></div>`,
   });
+}
+
+// --- GPS (só no app Android): plugin nativo em Kotlin, android-recursos/java/.../gps ---
+const GPS = NATIVO ? PLUG.GpsAtividade : null;
+const GPSV = { aberta: false, timer: null, e: null }; // tela da atividade em andamento
+async function iniciarGps(tipo) {
+  if (!GPS) return abrirRegistrarAtiv(tipo);
+  if (SA) { toast('Finalize o treino de academia antes.'); return; }
+  try {
+    let p = await GPS.permissao();
+    if (!p.precisa) p = await GPS.pedirPermissao();
+    if (!p.precisa) {
+      toast(p.localizacao === 'granted' ? 'Ative a "localização precisa" do GymFlow nas configurações do Android.' : 'Sem permissão de localização não dá para medir pelo GPS.', 4500);
+      return;
+    }
+    await permissaoNotificacao(); // a notificação mostra km e tempo com a tela desligada
+    GPSV.e = await GPS.iniciar({ tipo, voz: S.config.vozKm !== false, pausaAuto: S.config.pausaAuto !== false });
+    fecharTodas(); abrirTelaGps();
+  } catch (e) { toast((e && e.message) || 'Não foi possível iniciar o GPS.', 4000); }
+}
+function abrirTelaGps() {
+  GPSV.aberta = true;
+  $('#full').classList.remove('hidden'); document.body.classList.add('travado');
+  desenharTelaGps();
+  clearInterval(GPSV.timer);
+  GPSV.timer = setInterval(atualizarGps, 1000);
+  atualizarGps();
+}
+function fecharTelaGps() {
+  GPSV.aberta = false; clearInterval(GPSV.timer); GPSV.timer = null;
+  $('#full').classList.add('hidden'); $('#full').innerHTML = '';
+  document.body.classList.toggle('travado', PILHA.length > 0); render();
+}
+async function atualizarGps() {
+  if (!GPS) return;
+  try { GPSV.e = await GPS.estado(); } catch (e) { return; }
+  if (!GPSV.e.ativo) { if (GPSV.aberta) fecharTelaGps(); return; }
+  if (GPSV.aberta) desenharTelaGps();
+}
+function desenharTelaGps() {
+  const e = GPSV.e || {}, T = TIPOS_ATIV[e.tipo] || TIPOS_ATIV.corrida, bike = e.tipo === 'bike';
+  const km = (e.metros || 0) / 1000, seg = (e.movMs || 0) / 1000;
+  const status = e.pausado ? ['warn', 'Pausada'] : !e.sinal ? ['sub', 'Procurando sinal de GPS…'] : e.autoPausado ? ['warn', 'Pausa automática'] : ['ac', 'Gravando'];
+  const medio = km >= 0.05 ? (bike ? nf(km / (seg / 3600), 1) : fmtRitmo(seg / 60 / km)) : '–';
+  const agora = e.velAgora ? (bike ? nf(e.velAgora * 3.6, 1) : fmtRitmo(1000 / e.velAgora / 60)) : '–';
+  const kcal = kcalAtiv(e.tipo, seg, km, pesoAtual());
+  const caixa = (t, v, u) => `<div class="card dois c" style="margin:0;padding:14px 8px"><div class="lbl">${t}</div><b style="font-size:26px">${v}</b><div class="tiny sub">${u}</div></div>`;
+  $('#full').innerHTML = `<div style="padding:calc(env(safe-area-inset-top) + 14px) 16px 24px;max-width:560px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column">
+    <div class="row sb"><button class="icone-btn" data-act="gpsMinimizar" aria-label="Voltar ao app">${ic('baixo', 20)}</button><b>${T.em} ${T.t}</b><button class="icone-btn" data-act="gpsVoz" aria-label="Aviso por voz">${e.voz ? '🔊' : '🔇'}</button></div>
+    <div class="c" style="margin:26px 0 6px"><span class="small ${status[0]}">● ${status[1]}</span></div>
+    <div class="c" style="font-size:64px;font-weight:800;letter-spacing:-1px;font-variant-numeric:tabular-nums">${fmtCron(e.movMs || 0)}</div>
+    <div class="c" style="font-size:44px;font-weight:800;color:var(--ac);font-variant-numeric:tabular-nums">${nf(km, 2)} <span style="font-size:20px" class="sub">km</span></div>
+    <div class="grid3 mt2">${caixa(bike ? 'Vel. média' : 'Ritmo médio', medio, bike ? 'km/h' : 'min/km')}${caixa('Agora', agora, bike ? 'km/h' : 'min/km')}${caixa('Calorias', nf(kcal), 'kcal (estim.)')}</div>
+    ${e.kms ? `<div class="card dois c mt" style="padding:10px"><span class="small sub">Último km (${e.kms}º): </span><b>${fmtTempo(e.ultimoKmMs / 1000)}</b></div>` : ''}
+    <div style="flex:1"></div>
+    <div class="row mt2" style="gap:10px">
+      <button class="btn ${e.pausado ? '' : 'sec'} grow" style="padding:18px" data-act="${e.pausado ? 'gpsRetomar' : 'gpsPausar'}">${ic(e.pausado ? 'play' : 'pausa', 18)} ${e.pausado ? 'Continuar' : 'Pausar'}</button>
+      <button class="btn perigo grow" style="padding:18px" data-act="gpsEncerrar">${ic('check', 18)} Encerrar</button></div>
+    <p class="tiny mut c mt">Pode desligar a tela: o GPS continua medindo e a notificação mostra km e tempo.</p></div>`;
+}
+// Resumo depois de encerrar (ou de uma atividade que o Android interrompeu)
+function abrirResumoGps(r, interrompida) {
+  const tipo = r.tipo || 'corrida', dur = Math.round((r.movMs || 0) / 1000), km = Math.round((r.metros || 0) / 10) / 100;
+  const a = { id: novoId(), tipo, ini: r.ini || Date.now(), dur, km, kcal: kcalAtiv(tipo, dur, km, pesoAtual()), origem: 'gps', notas: '', parciais: (r.parciais || []).map(x => Math.round(x)), pontos: r.pontos || [] };
+  const st = { notas: '' }, T = TIPOS_ATIV[tipo];
+  abrirSheet({
+    cls: 'alto', st, a,
+    render: () => `${cabecalho(interrompida ? 'Atividade interrompida' : T.em + ' ' + T.t + ' concluída!')}
+      ${interrompida ? '<p class="small warn" style="margin-top:0">O Android fechou o app no meio da atividade. Este é o que foi medido até ali.</p>' : ''}
+      ${resumoAtivHTML(a)}
+      <label class="campo mt"><span>Anotação – opcional</span><input data-in="gpsNotas" value="${esc(st.notas)}" placeholder="Como foi?"></label>
+      <div class="row mt"><button class="btn perigo" data-act="gpsDescartar">${ic('lixo', 18)}</button><button class="btn grow" data-act="gpsSalvar" ${dur < 10 ? 'disabled' : ''}>Salvar atividade</button></div>`,
+    depois: () => desenharMapa(a.pontos),
+    // Fechou sem escolher (toque fora, voltar): salva mesmo assim. Só a lixeira descarta.
+    aoFechar: function () { if (!this.feito && dur >= 10) { salvarAtivGps(this); setTimeout(render); } },
+  });
+}
+function salvarAtivGps(t) {
+  t.feito = true;
+  const a = { ...t.a, notas: (t.st.notas || '').trim() };
+  const recAntes = recordesAtiv().map(r => r[1] + r[2].v);
+  ATIV = ATIV.filter(x => x.id !== a.id).concat(a).sort((x, y) => y.ini - x.ini);
+  salvar('ativ:' + a.id); if (GPS) GPS.apagarCopia().catch(() => { });
+  const novo = recordesAtiv().find(r => r[2].a.id === a.id && !recAntes.includes(r[1] + r[2].v));
+  toast(novo ? `🏆 Novo recorde: ${novo[1]}!` : `${TIPOS_ATIV[a.tipo].em} Atividade salva!`);
+}
+function resumoAtivHTML(a) {
+  const caixa = (t, v) => `<div class="card dois c" style="margin:0"><div class="lbl">${t}</div><b style="font-size:20px">${v}</b></div>`;
+  const parc = a.parciais || [];
+  const melhor = parc.length ? Math.min(...parc) : null;
+  return `${a.pontos && a.pontos.length > 1 ? '<div id="mapa-ativ" class="mapa-ativ"></div>' : ''}
+    <div class="grid2 mt">${caixa('Distância', a.km ? nf(a.km, 2) + ' km' : '–')}${caixa('Tempo em movimento', fmtTempo(a.dur))}${caixa(a.tipo === 'bike' ? 'Velocidade média' : 'Ritmo médio', leituraAtiv(a) || '–')}${caixa('Calorias (estim.)', nf(a.kcal) + ' kcal')}</div>
+    ${parc.length ? `<h4 class="mt2 mb">Parciais por km</h4><div class="card dois" style="padding:6px 14px">${parc.map((s, i) => `<div class="row sb small" style="padding:7px 0;border-bottom:1px solid var(--line)"><span class="sub">Km ${i + 1}</span><span>${barraParcial(s, parc)}</span><b class="${s === melhor && parc.length > 1 ? 'ac' : ''}">${a.tipo === 'bike' ? nf(3600 / s, 1) + ' km/h' : fmtRitmo(s / 60) + ' /km'}</b></div>`).join('')}</div>` : ''}`;
+}
+const barraParcial = (s, l) => { const mx = Math.max(...l), mn = Math.min(...l); const w = mx === mn ? 60 : 30 + 70 * (mx - s) / (mx - mn); return `<i style="display:inline-block;width:${Math.round(w)}px;height:6px;border-radius:3px;background:var(--ac);opacity:.7"></i>`; };
+// Mapa do percurso: Leaflet + OpenStreetMap (carregados só quando precisa). Sem internet, desenha só o traçado.
+let LEAFLET = null;
+function carregarLeaflet() {
+  if (LEAFLET) return LEAFLET;
+  LEAFLET = new Promise((ok, erro) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+    carregarScript('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js').then(ok, e => { LEAFLET = null; erro(e); });
+  });
+  return LEAFLET;
+}
+async function desenharMapa(pontos) {
+  const el = $('#mapa-ativ'); if (!el || !pontos || pontos.length < 2) return;
+  try {
+    await carregarLeaflet();
+    if (!el.isConnected) return;
+    const L = window.L, m = L.map(el, { zoomControl: false, attributionControl: true });
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
+    const linha = L.polyline(pontos, { color: '#00d084', weight: 5 }).addTo(m);
+    L.circleMarker(pontos[0], { radius: 6, color: '#fff', fillColor: '#00d084', fillOpacity: 1, weight: 2 }).addTo(m);
+    L.circleMarker(pontos[pontos.length - 1], { radius: 6, color: '#fff', fillColor: '#ff453a', fillOpacity: 1, weight: 2 }).addTo(m);
+    m.fitBounds(linha.getBounds(), { padding: [18, 18] });
+  } catch (e) { // offline: só o traçado, sem o mapa de fundo
+    const lats = pontos.map(p => p[0]), lons = pontos.map(p => p[1]);
+    const a0 = Math.min(...lats), a1 = Math.max(...lats), o0 = Math.min(...lons), o1 = Math.max(...lons);
+    const k = Math.cos((a0 + a1) / 2 * Math.PI / 180), W = 340, H = 220, esc_ = Math.min((W - 30) / (((o1 - o0) * k) || 1e-9), (H - 30) / ((a1 - a0) || 1e-9));
+    const dx = (W - (o1 - o0) * k * esc_) / 2, dy = (H - (a1 - a0) * esc_) / 2; // centraliza o traçado
+    const X = o => dx + (o - o0) * k * esc_, Y = a => H - dy - (a - a0) * esc_;
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:100%"><path d="${pontos.map((p, i) => (i ? 'L' : 'M') + X(p[1]).toFixed(1) + ' ' + Y(p[0]).toFixed(1)).join(' ')}" fill="none" stroke="#00d084" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  }
+}
+// Ao abrir o app: volta para a atividade em andamento ou oferece salvar a que foi interrompida
+async function retomarGpsAoAbrir() {
+  if (!GPS) return;
+  try {
+    const e = await GPS.estado(); GPSV.e = e;
+    if (e.ativo) { if (!GPSV.aberta) abrirTelaGps(); return; }
+    const c = await GPS.copia();
+    if (c && c.tipo && (c.movMs || 0) >= 10000) abrirResumoGps(c, true);
+    else if (c && c.tipo) GPS.apagarCopia().catch(() => { });
+  } catch (e) { }
 }
 
 // --- Editor de ficha ---
@@ -1695,7 +1854,13 @@ function evoCarga() {
 // Recordes: tempo para 5 e 10 km vem do ritmo médio de corridas com pelo menos essa distância
 function recordesAtiv() {
   const R = [], corr = ATIV.filter(a => a.tipo === 'corrida' && a.km > 0 && a.dur > 0);
-  const melhorTempo = dist => { const l = corr.filter(a => a.km >= dist); if (!l.length) return null; const a = l.reduce((x, y) => ritmoAtiv(y) < ritmoAtiv(x) ? y : x); return { a, v: fmtTempo(ritmoAtiv(a) * 60 * dist), info: fmtRitmo(ritmoAtiv(a)) + ' /km' }; };
+  // Com parciais do GPS: melhor sequência de km seguidos; sem elas: ritmo médio × distância
+  const tempoPara = (a, dist) => {
+    const p = a.parciais || [];
+    if (p.length >= dist) { let s = p.slice(0, dist).reduce((x, y) => x + y, 0), m = s; for (let i = dist; i < p.length; i++) { s += p[i] - p[i - dist]; m = Math.min(m, s); } return m; }
+    return ritmoAtiv(a) * 60 * dist;
+  };
+  const melhorTempo = dist => { const l = corr.filter(a => a.km >= dist); if (!l.length) return null; const a = l.reduce((x, y) => tempoPara(y, dist) < tempoPara(x, dist) ? y : x); const t = tempoPara(a, dist); return { a, v: fmtTempo(t), info: fmtRitmo(t / 60 / dist) + ' /km' }; };
   const maior = tipo => { const l = ATIV.filter(a => a.tipo === tipo && a.km > 0); if (!l.length) return null; const a = l.reduce((x, y) => y.km > x.km ? y : x); return { a, v: nf(a.km, 2) + ' km', info: fmtTempo(a.dur) }; };
   const r5 = melhorTempo(5), r10 = melhorTempo(10);
   if (r5) R.push(['🏃', '5 km mais rápido', r5]);
@@ -1722,7 +1887,7 @@ function evoAtiv() {
   const rec = recordesAtiv();
   h += `<div class="sec-h"><h3>Recordes</h3></div>`;
   h += rec.length ? rec.map(([em, n, r]) => `<button class="card" style="display:block;width:100%;text-align:left" data-act="verAtiv" data-id="${r.a.id}"><div class="row sb"><div class="grow"><b>${em} ${n}</b><div class="small sub">${fmtDataLonga(iso(new Date(r.a.ini)))} · ${r.info}</div></div><b class="ac" style="font-size:18px">${r.v}</b></div></button>`).join('')
-    + '<p class="tiny mut">Tempos de 5 e 10 km estimados pelo ritmo médio de corridas com pelo menos essa distância.</p>'
+    + '<p class="tiny mut">Tempos de 5 e 10 km: melhor sequência de km seguidos nas corridas com GPS; nas manuais, pelo ritmo médio.</p>'
     : '<div class="vazio">Registre atividades com distância para ver seus recordes.</div>';
   return h;
 }
@@ -2072,6 +2237,7 @@ const A = {
     const [hh, mm] = (st.hora || '07:00').split(':').map(Number), ini = parseISO(st.d); ini.setHours(hh || 0, mm || 0, 0, 0);
     const a = { id: t.orig ? t.orig.id : novoId(), tipo: st.tipo, ini: ini.getTime(), dur, km: km ? Math.round(km * 100) / 100 : 0, kcal: kcalAtiv(st.tipo, dur, km, pesoAtual()), origem: t.orig ? t.orig.origem : 'manual', notas: (st.notas || '').trim() };
     if (t.orig && t.orig.pontos) a.pontos = t.orig.pontos;
+    if (t.orig && t.orig.parciais && Math.abs((t.orig.km || 0) - a.km) < 0.01) a.parciais = t.orig.parciais; // parciais só valem se a distância não mudou
     const recAntes = recordesAtiv().map(r => r[1] + r[2].v);
     ATIV = ATIV.filter(x => x.id !== a.id).concat(a).sort((x, y) => y.ini - x.ini);
     salvar('ativ:' + a.id); fecharTodas(); render();
@@ -2086,6 +2252,27 @@ const A = {
     S.config.metaKm = v ? r1(v) : null; salvar('main'); fecharSheet(); render(); toast('Salvo');
   },
   ritmoTipo: ds => { SUB.ritmo = ds.v; render(); },
+  cfgToggleSim: ds => { S.config[ds.k] = S.config[ds.k] === false; salvar('main'); redesenharSheet(); },
+  escolherAtiv: () => abrirEscolherAtiv(),
+  gpsIniciar: ds => iniciarGps(TIPOS_ATIV[ds.v] ? ds.v : 'corrida'),
+  gpsAbrir: () => abrirTelaGps(),
+  gpsMinimizar: () => fecharTelaGps(),
+  gpsPausar: async () => { GPSV.e = await GPS.pausar(); desenharTelaGps(); },
+  gpsRetomar: async () => { GPSV.e = await GPS.retomar(); desenharTelaGps(); },
+  gpsVoz: async () => { GPSV.e = await GPS.voz({ ativa: !(GPSV.e && GPSV.e.voz) }); S.config.vozKm = GPSV.e.voz; salvar('main'); desenharTelaGps(); },
+  gpsEncerrar: async () => {
+    if (!(await confirmar('Encerrar a atividade?', 'Encerrar', false))) return;
+    const r = await GPS.parar(); GPSV.e = { ativo: false };
+    fecharTelaGps();
+    if (r && r.tipo) abrirResumoGps(r);
+  },
+  gpsSalvar: () => { const t = topo(); salvarAtivGps(t); PILHA.pop(); desenharSheet(); VIEW = 'hoje'; DIA = hojeISO(); render(); },
+  gpsDescartar: async () => {
+    const t = topo();
+    if (!(await confirmar('Descartar esta atividade? Nada será salvo.', 'Descartar'))) return;
+    t.feito = true; if (GPS) GPS.apagarCopia().catch(() => { });
+    fecharTodas(); render();
+  },
   tomarSupl: ds => {
     const d = getDia(DIA), s = S.suplementos.find(x => x.id === ds.id); d.supl = d.supl || {};
     if (d.supl[s.id]) { delete d.supl[s.id]; if (s.estoque != null && s.estoque !== '') s.estoque++; }
@@ -2335,6 +2522,7 @@ const I = {
   ativCampo: (ds, el) => { const t = topo(); t.st[ds.k] = el.value; const p = $('#ativ-prev'); if (p) p.innerHTML = t.prev(); },
   cfgAtivCampo: (ds, el) => { topo().st[ds.k] = el.value; },
   aguaCampo: (ds, el) => { topo().st.ml = el.value; },
+  gpsNotas: (ds, el) => { topo().st.notas = el.value; },
   coposCampo: (ds, el) => { topo().st.l[Number(ds.i)] = el.value; },
   cfgDescanso: (ds, el) => { S.config.descanso = Number(el.value); salvar('main'); },
 };
@@ -2407,13 +2595,14 @@ function configurarNativo() {
   if (App) {
     App.addListener('backButton', () => {
       if (PILHA.length) return fecharSheet();
+      if (GPSV.aberta) return fecharTelaGps();
       if (!$('#full').classList.contains('hidden')) return fecharSessaoTela();
       if (OB && OB.passo > 0) return A.obVoltar();
       if (S && S.perfil && !$('#app').classList.contains('hidden') && VIEW !== 'hoje') { VIEW = 'hoje'; render(); window.scrollTo(0, 0); return; }
       App.minimizeApp ? App.minimizeApp() : App.exitApp();
     });
     App.addListener('pause', () => { agendarAvisoDescanso(); });
-    App.addListener('resume', () => { cancelarAvisoDescanso(); if (RT) tickDescanso(); verificarAtualizacao(); });
+    App.addListener('resume', () => { cancelarAvisoDescanso(); if (RT) tickDescanso(); verificarAtualizacao(); if (GPS && S && S.perfil) atualizarGps().then(() => { if (!GPSV.aberta && VIEW !== 'perfil') render(); }); });
   }
   verificarAtualizacao();
 }
