@@ -58,6 +58,12 @@ a{color:var(--ac)}
 .topbar .ola{font-size:13px;color:var(--sub)} .topbar .nome{font-weight:700;font-size:16px}
 .icone-btn{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--sub);background:var(--card)}
 .icone-btn:active{transform:scale(.95)}
+.agua-bts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.agua-bts .btn{flex:1 1 0;min-width:64px}
+.tipo-ativ{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tipo-ativ button{background:var(--card2);border:1.5px solid transparent;border-radius:14px;padding:12px 6px;text-align:center;font-weight:600;font-size:13.5px}
+.tipo-ativ button.on{border-color:var(--ac);background:var(--acbg)}
+.tipo-ativ .em{display:block;font-size:24px;margin-bottom:4px}
 .sync{width:8px;height:8px;border-radius:50%;background:var(--ac);display:inline-block;margin-right:6px}
 .sync.pend{background:var(--warn)} .sync.erro{background:var(--red)} .sync.local{background:var(--mut)}
 main#main{padding:4px 16px calc(var(--nav) + 40px + var(--safe-b))}
@@ -267,7 +273,7 @@ body.oculto .sens{filter:blur(7px);user-select:none}
 'use strict';
 /* =====================================================================
    GymFlow – dieta, treino e evolução.
-   Dados de cada usuário: Firestore users/{uid} (+ subcoleções dias, sessoes, fotos).
+   Dados de cada usuário: Firestore users/{uid} (+ subcoleções dias, sessoes, atividades, fotos).
    Sem Firebase configurado (firebase-config.js vazio) o app roda em "modo local".
    ===================================================================== */
 
@@ -366,6 +372,9 @@ const P = {
   nota: '<path d="M5 3h10l4 4v14H5z"/><path d="M9 12h6M9 16h6M9 8h3"/>',
   instalar: '<rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M12 7v7M9 11l3 3 3-3"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>',
+  corrida: '<circle cx="15" cy="4.5" r="2"/><path d="M5 21l3.5-5.5 3.5 2 1-5.5"/><path d="M8 10.5l3-3 3.5 1.5 2 3.5H20"/><path d="M13 12l-3 3.5"/>',
+  bike: '<circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M5.5 17l4-8h6.5l2.5 8"/><path d="M9.5 9l3 8h-7M14.5 5H17l-1 4"/>',
+  desfazer: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
 };
 const ic = (n, s = 22, w = 2) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[n] || ''}</svg>`;
 
@@ -382,11 +391,12 @@ let USER = null;           // { uid, email, nome }
 let S = null;              // documento principal users/{uid}
 let D = {};                // dias: { 'aaaa-mm-dd': { ref:{idRef:[itens]}, agua, supl:{} } }
 let SESS = [];             // sessões de treino concluídas
+let ATIV = [];             // atividades ao ar livre (caminhada, corrida, bike)
 let FOTOS = null;          // carregadas sob demanda
 let SA = null;             // sessão de treino em andamento
 let VIEW = 'hoje';
 let DIA = hojeISO();
-const SUB = { treino: 'fichas', evo: 'corpo' };
+const SUB = { treino: 'fichas', evo: 'corpo', modo: null, ritmo: 'corrida' };
 const ABERTAS = new Set(); // refeições expandidas na tela Hoje
 
 const REFEICOES_PADRAO = [
@@ -396,15 +406,19 @@ const REFEICOES_PADRAO = [
   { id: 'jantar', nome: 'Jantar', pct: 25 },
   { id: 'ceia', nome: 'Ceia', pct: 5 },
 ];
+const COPOS_PADRAO = [250, 500, 600, 1000]; // botões de água (ml), configuráveis em Perfil
 const padraoState = () => ({
   v: 1, perfil: null, metas: { auto: true }, refeicoes: clone(REFEICOES_PADRAO), fichas: [], exCustom: [], alimCustom: [],
-  combos: [], pesos: [], medidas: [], suplementos: [], config: { som: true, vibrar: true, descanso: 60, ocultar: false }, criadoEm: Date.now(),
+  combos: [], pesos: [], medidas: [], suplementos: [], config: { som: true, vibrar: true, descanso: 60, ocultar: false, copos: clone(COPOS_PADRAO), metaKm: null, somarAtiv: false }, criadoEm: Date.now(),
 });
 function aplicar(o) {
   const p = padraoState(), s = (o && o.S) || {};
   S = { ...p, ...s, config: { ...p.config, ...(s.config || {}) }, metas: { ...p.metas, ...(s.metas || {}) } };
+  if (!Array.isArray(S.config.copos) || !S.config.copos.length) S.config.copos = clone(COPOS_PADRAO);
+  if (S.perfil && !S.perfil.estilo) S.perfil.estilo = 'ambos'; // contas antigas: mostra academia e ar livre
   D = (o && o.D) || {};
   SESS = ((o && o.SESS) || []).sort((a, b) => b.ini - a.ini);
+  ATIV = ((o && o.ATIV) || []).sort((a, b) => b.ini - a.ini);
   document.body.classList.toggle('oculto', !!S.config.ocultar);
 }
 
@@ -412,7 +426,7 @@ function aplicar(o) {
 const chaveCache = () => MODO_NUVEM ? 'gf_cache_' + USER.uid : 'gf_local';
 const chaveSA = () => 'gf_sa_' + (USER ? USER.uid : 'x');
 function cacheLocal() {
-  try { localStorage.setItem(chaveCache(), JSON.stringify({ S, D, SESS })); }
+  try { localStorage.setItem(chaveCache(), JSON.stringify({ S, D, SESS, ATIV })); }
   catch (e) { if (!MODO_NUVEM) toast('Memória do navegador cheia: exporte um backup.'); }
 }
 const sync = { pend: new Set(), timer: null };
@@ -439,6 +453,7 @@ async function flush() {
       const i = k.indexOf(':'), t = k.slice(0, i), id = k.slice(i + 1);
       if (t === 'dia') return D[id] ? base.collection('dias').doc(id).set(clone(D[id])) : base.collection('dias').doc(id).delete();
       if (t === 'sess') { const s = SESS.find(x => x.id === id); return s ? base.collection('sessoes').doc(id).set(clone(s)) : base.collection('sessoes').doc(id).delete(); }
+      if (t === 'ativ') { const a = ATIV.find(x => x.id === id); return a ? base.collection('atividades').doc(id).set(clone(a)) : base.collection('atividades').doc(id).delete(); }
       return null;
     }));
     if (!sync.pend.size) setSync('ok');
@@ -455,9 +470,9 @@ async function carregar() {
   if (!MODO_NUVEM) { aplicar(cache); return; }
   try {
     const base = fb.db.collection('users').doc(USER.uid);
-    const [m, dias, sess] = await Promise.all([base.get(), base.collection('dias').get(), base.collection('sessoes').get()]);
+    const [m, dias, sess, ativ] = await Promise.all([base.get(), base.collection('dias').get(), base.collection('sessoes').get(), base.collection('atividades').get()]);
     const d = {}; dias.forEach(x => { d[x.id] = x.data(); });
-    aplicar({ S: m.exists ? m.data() : null, D: d, SESS: sess.docs.map(x => x.data()) });
+    aplicar({ S: m.exists ? m.data() : null, D: d, SESS: sess.docs.map(x => x.data()), ATIV: ativ.docs.map(x => x.data()) });
     cacheLocal();
   } catch (e) {
     console.error(e); aplicar(cache);
@@ -554,6 +569,51 @@ function gorduraMarinha(m) {
 }
 const e1rm = (kg, reps) => (kg > 0 && reps > 0) ? (reps === 1 ? kg : kg * (1 + reps / 30)) : 0; // Epley
 
+// ---------- Atividades ao ar livre ----------
+// Gasto calórico = MET × peso (kg) × horas. METs por velocidade: Compendium of Physical Activities
+// (Ainsworth et al., 2011), códigos 17xxx (caminhada), 12xxx (corrida) e 01xxx (bicicleta).
+// Pontos [km/h, MET]; entre dois pontos o valor é interpolado. Sem distância, usa o MET "padrão" do tipo.
+const TIPOS_ATIV = {
+  caminhada: { t: 'Caminhada', em: '🚶', icone: 'corrida', velMax: 12, met: 3.5, tab: [[3.2, 2.8], [4.0, 3.0], [4.8, 3.5], [5.6, 4.3], [6.4, 5.0], [7.2, 7.0], [8.0, 8.3]] },
+  corrida: { t: 'Corrida', em: '🏃', icone: 'corrida', velMax: 30, met: 9.8, tab: [[6.4, 6.0], [8.0, 8.3], [8.4, 9.0], [9.7, 9.8], [10.8, 10.5], [11.3, 11.0], [12.1, 11.5], [12.9, 11.8], [14.5, 12.8], [16.1, 14.5], [17.7, 16.0], [19.3, 19.0]] },
+  bike: { t: 'Bike', em: '🚴', icone: 'bike', velMax: 80, met: 6.8, tab: [[15.9, 4.0], [16.1, 6.8], [19.3, 8.0], [22.5, 10.0], [25.7, 12.0], [32.2, 15.8]] },
+};
+function metAtiv(tipo, kmh) {
+  const T = TIPOS_ATIV[tipo]; if (!T) return 0;
+  if (!kmh) return T.met;
+  const tb = T.tab; if (kmh <= tb[0][0]) return tb[0][1]; if (kmh >= tb[tb.length - 1][0]) return tb[tb.length - 1][1];
+  for (let i = 1; i < tb.length; i++) if (kmh <= tb[i][0]) { const [x0, y0] = tb[i - 1], [x1, y1] = tb[i]; return y0 + (y1 - y0) * (kmh - x0) / (x1 - x0); }
+  return T.met;
+}
+const velAtiv = a => a.km > 0 && a.dur > 0 ? a.km / (a.dur / 3600) : null;          // km/h
+const ritmoAtiv = a => a.km > 0 && a.dur > 0 ? a.dur / 60 / a.km : null;           // min/km
+const kcalAtiv = (tipo, dur, km, kg) => Math.round(metAtiv(tipo, km > 0 && dur > 0 ? km / (dur / 3600) : null) * (kg || 70) * dur / 3600);
+const fmtRitmo = min => { if (min == null || !isFinite(min)) return '–'; let m = Math.floor(min), s = Math.round((min - m) * 60); if (s === 60) { m++; s = 0; } return `${m}:${pad(s)}`; };
+const fmtTempo = seg => { seg = Math.round(seg || 0); const h = Math.floor(seg / 3600), m = Math.floor(seg / 60) % 60, s = seg % 60; return h ? `${h}h${pad(m)}` : s ? `${m}:${pad(s)}` : `${m} min`; };
+// Ritmo (min/km) para caminhada e corrida; velocidade (km/h) para bike, que é como o ciclista lê
+const leituraAtiv = a => a.tipo === 'bike' ? (velAtiv(a) ? nf(velAtiv(a), 1) + ' km/h' : '') : (ritmoAtiv(a) ? fmtRitmo(ritmoAtiv(a)) + ' /km' : '');
+const ativDoDia = d => ATIV.filter(a => iso(new Date(a.ini)) === d);
+const estilo = () => (S.perfil && S.perfil.estilo) || 'ambos';
+const usaAcademia = () => estilo() !== 'arlivre';
+const usaArLivre = () => estilo() !== 'academia' || ATIV.length > 0;
+const iniSemana = (d = hojeISO()) => addDias(d, -parseISO(d).getDay());
+function totaisAtiv(ini, fim) {
+  const l = ATIV.filter(a => { const d = iso(new Date(a.ini)); return d >= ini && d <= fim; });
+  const t = { n: l.length, km: 0, dur: 0, kcal: 0, tipos: {} };
+  for (const a of l) { t.km += a.km || 0; t.dur += a.dur || 0; t.kcal += a.kcal || 0; const x = t.tipos[a.tipo] || (t.tipos[a.tipo] = { n: 0, km: 0, dur: 0 }); x.n++; x.km += a.km || 0; x.dur += a.dur || 0; }
+  return t;
+}
+// Meta do dia: as calorias das atividades só entram na meta para quem marcou "Sedentário" e ligou a opção
+// (para os outros níveis o fator de atividade já conta o exercício; somar seria contar duas vezes).
+function metasDia(d) {
+  const m = metas();
+  if (!S.perfil || S.perfil.atividade !== 1.2 || !S.config.somarAtiv) return m;
+  const extra = ativDoDia(d).reduce((s, a) => s + (a.kcal || 0), 0);
+  if (!extra) return m;
+  const carb = m.carb + Math.round(extra / 4); // o extra vai para o carboidrato e a meta continua fechando 4/4/9
+  return { ...m, carb, kcal: m.prot * 4 + carb * 4 + m.gord * 9, extraAtiv: extra };
+}
+
 // ---------- Dia / diário alimentar ----------
 const getDia = d => D[d] || (D[d] = { ref: {}, agua: 0, supl: {} });
 function totais(d) {
@@ -576,7 +636,7 @@ function totais(d) {
 const sessoesDoDia = d => SESS.filter(s => iso(new Date(s.ini)) === d);
 function diaAtivo(d) {
   const x = D[d];
-  return !!(sessoesDoDia(d).length || (x && (x.agua > 0 || Object.values(x.ref || {}).some(l => l.length))));
+  return !!(sessoesDoDia(d).length || ativDoDia(d).length || (x && (x.agua > 0 || Object.values(x.ref || {}).some(l => l.length))));
 }
 function sequencia() {
   let d = hojeISO(), n = 0;
@@ -586,7 +646,7 @@ function sequencia() {
 }
 function metaDietaOk(d) {
   const t = totais(d); if (!t.itens) return false;
-  const m = metas(); return t.kcal >= m.kcal * 0.9 && t.kcal <= m.kcal * 1.1;
+  const m = metasDia(d); return t.kcal >= m.kcal * 0.9 && t.kcal <= m.kcal * 1.1;
 }
 
 // ---------- Alimentos ----------
@@ -693,7 +753,7 @@ function grafLinha(pts, o = {}) {
   const ult = pts[pts.length - 1];
   return `<div class="graf"><svg viewBox="0 0 ${W} ${H}" role="img">
     <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${cor}" stop-opacity=".28"/><stop offset="1" stop-color="${cor}" stop-opacity="0"/></linearGradient></defs>
-    ${yl.map(v => `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#222" stroke-width="1"/><text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${nf(v, o.casas ?? 1)}</text>`).join('')}
+    ${yl.map(v => `<line x1="${pl}" x2="${W - pr}" y1="${Y(v)}" y2="${Y(v)}" stroke="#222" stroke-width="1"/><text x="${pl - 6}" y="${Y(v) + 3}" text-anchor="end">${o.fmt ? o.fmt(v) : nf(v, o.casas ?? 1)}</text>`).join('')}
     ${o.meta != null ? `<line x1="${pl}" x2="${W - pr}" y1="${Y(o.meta)}" y2="${Y(o.meta)}" stroke="#0a84ff" stroke-dasharray="5 4" stroke-width="1.5"/><text x="${W - pr}" y="${Y(o.meta) - 5}" text-anchor="end" style="fill:#0a84ff">meta ${nf(o.meta, 1)}</text>` : ''}
     <path d="${area}" fill="url(#${gid})"/>
     <path d="${linha}" fill="none" stroke="${cor}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
@@ -795,12 +855,12 @@ async function comBotao(btn, fn) { const t = btn.textContent; btn.disabled = tru
 let OB = null;
 function iniciarOnboarding() {
   $('#boot').classList.add('hidden'); $('#app').classList.add('hidden');
-  OB = { passo: 0, p: { nome: (USER && USER.nome) || '', sexo: '', nasc: '', altura: '', peso: '', atividade: 1.55, objetivo: 'perder', metaPeso: '' }, modelo: null };
+  OB = { passo: 0, p: { nome: (USER && USER.nome) || '', sexo: '', nasc: '', altura: '', peso: '', atividade: 1.55, objetivo: 'perder', metaPeso: '', estilo: '' }, modelo: null };
   desenharOnboarding();
 }
 function desenharOnboarding() {
   const a = $('#auth'); a.classList.remove('hidden');
-  const p = OB.p, N = 6;
+  const p = OB.p, N = ultimoPassoOB() + 1;
   let h = '';
   if (OB.passo === 0) h = `<h2>Vamos montar seu plano</h2><p class="sub mt mb">Leva 1 minuto. Com isso calculamos suas calorias e macros.</p>
     <label class="campo"><span>Como podemos te chamar?</span><input data-ob="nome" value="${esc(p.nome)}" autocomplete="given-name"></label>
@@ -810,12 +870,14 @@ function desenharOnboarding() {
     <label class="campo"><span>Data de nascimento</span><input type="date" data-ob="nasc" value="${esc(p.nasc)}" max="${hojeISO()}"></label>
     <div class="grid2"><label class="campo"><span>Altura (cm)</span><input type="number" inputmode="numeric" data-ob="altura" value="${esc(p.altura)}" placeholder="175"></label>
     <label class="campo"><span>Peso (kg)</span><input type="number" inputmode="decimal" step="0.1" data-ob="peso" value="${esc(p.peso)}" placeholder="80,0"></label></div>`;
-  if (OB.passo === 2) h = `<h2>Nível de atividade</h2><p class="sub mt mb">Considere treino e rotina do dia a dia.</p>
+  if (OB.passo === 2) h = `<h2>Como você gosta de se exercitar?</h2><p class="sub mt mb">O app se adapta ao seu estilo. Dá para mudar depois no perfil.</p>
+    ${ESTILOS.map(([v, t, d]) => `<button class="opcao ${p.estilo === v ? 'on' : ''}" data-act="obSet" data-k="estilo" data-v="${v}"><b>${t}</b><span>${d}</span></button>`).join('')}`;
+  if (OB.passo === 3) h = `<h2>Nível de atividade</h2><p class="sub mt mb">Considere treino e rotina do dia a dia.</p>
     ${ATIVIDADES.map(x => `<button class="opcao ${p.atividade === x.f ? 'on' : ''}" data-act="obSet" data-k="atividade" data-v="${x.f}"><b>${x.t}</b><span>${x.d}</span></button>`).join('')}`;
-  if (OB.passo === 3) h = `<h2>Qual é o objetivo?</h2><p class="sub mt mb">Define seu ajuste de calorias e de proteína.</p>
+  if (OB.passo === 4) h = `<h2>Qual é o objetivo?</h2><p class="sub mt mb">Define seu ajuste de calorias e de proteína.</p>
     ${Object.entries(OBJETIVOS).map(([k, x]) => `<button class="opcao ${p.objetivo === k ? 'on' : ''}" data-act="obSet" data-k="objetivo" data-v="${k}"><b>${x.t}</b><span>${x.d}</span></button>`).join('')}
     <label class="campo mt"><span>Peso desejado (kg) – opcional</span><input type="number" inputmode="decimal" step="0.1" data-ob="metaPeso" value="${esc(p.metaPeso)}"></label>`;
-  if (OB.passo === 4) {
+  if (OB.passo === 5) {
     const m = calcMetas(perfilOB(), num(p.peso));
     h = `<h2>Seu plano diário</h2><p class="sub mt mb">Calculado com a fórmula de Mifflin-St Jeor. Você pode trocar para metas manuais quando quiser.</p>
     <div class="card dois c"><div class="lbl">Meta de calorias</div><div class="big ac">${nf(m.kcal)} kcal</div><div class="small sub">Metabolismo basal ${nf(m.tmb)} kcal · Gasto total ${nf(m.get)} kcal</div></div>
@@ -827,16 +889,18 @@ function desenharOnboarding() {
     </div>
     <p class="tiny mut mt">Estimativa para adultos saudáveis. Não substitui nutricionista ou médico.</p>`;
   }
-  if (OB.passo === 5) h = `<h2>Quer uma ficha pronta?</h2><p class="sub mt mb">Comece com um modelo e ajuste os exercícios e cargas depois.</p>
+  if (OB.passo === 6) h = `<h2>Quer uma ficha pronta?</h2><p class="sub mt mb">Comece com um modelo e ajuste os exercícios e cargas depois.</p>
     ${(window.MODELOS_FICHA || []).map((m, i) => `<button class="opcao ${OB.modelo === i ? 'on' : ''}" data-act="obModelo" data-v="${i}"><b>${esc(m.nome)}</b><span>${m.nivel} · ${m.fichas.length} treinos · ${m.fichas.map(f => esc(f.nome.split('–')[0].trim())).join(', ')}</span></button>`).join('')}
     <button class="opcao ${OB.modelo === -1 ? 'on' : ''}" data-act="obModelo" data-v="-1"><b>Vou montar a minha</b><span>Começar sem ficha</span></button>`;
-  const ultimo = OB.passo === N - 1;
+  const ultimo = OB.passo === ultimoPassoOB();
   a.innerHTML = `<div class="auth" style="justify-content:flex-start">
     <div class="passos">${Array.from({ length: N }, (_, i) => `<i class="${i <= OB.passo ? 'on' : ''}"></i>`).join('')}</div>
     ${h}<div class="erro-msg" id="ob-erro"></div>
     <div class="row mt">${OB.passo ? `<button class="btn sec" data-act="obVoltar">${ic('esq', 18)}</button>` : ''}<button class="btn grow" data-act="obAvancar">${ultimo ? 'Começar a usar' : 'Continuar'}</button></div></div>`;
 }
-function perfilOB() { const p = OB.p; return { nome: p.nome.trim(), sexo: p.sexo, nasc: p.nasc, altura: num(p.altura), peso: num(p.peso), atividade: Number(p.atividade), objetivo: p.objetivo, metaPeso: num(p.metaPeso) }; }
+const ESTILOS = [['academia', '🏋️ Academia', 'Treinos com fichas, séries e cargas'], ['arlivre', '🏃 Ar livre', 'Caminhada, corrida e bike'], ['ambos', '🔥 Os dois', 'Academia e atividades ao ar livre']];
+const ultimoPassoOB = () => OB.p.estilo === 'arlivre' ? 5 : 6; // quem não faz academia não vê a escolha de ficha
+function perfilOB() { const p = OB.p; return { nome: p.nome.trim(), sexo: p.sexo, nasc: p.nasc, altura: num(p.altura), peso: num(p.peso), atividade: Number(p.atividade), objetivo: p.objetivo, metaPeso: num(p.metaPeso), estilo: p.estilo || 'ambos' }; }
 function validarOB() {
   const p = perfilOB();
   if (OB.passo === 0) { if (!p.nome) return 'Digite seu nome.'; if (!p.sexo) return 'Escolha o sexo.'; }
@@ -845,14 +909,15 @@ function validarOB() {
     if (!p.altura || p.altura < 120 || p.altura > 230) return 'Altura deve estar entre 120 e 230 cm.';
     if (!p.peso || p.peso < 30 || p.peso > 300) return 'Peso deve estar entre 30 e 300 kg.';
   }
-  if (OB.passo === 5 && OB.modelo == null) return 'Escolha uma opção.';
+  if (OB.passo === 2 && !OB.p.estilo) return 'Escolha uma opção.';
+  if (OB.passo === 6 && OB.modelo == null) return 'Escolha uma opção.';
   return '';
 }
 function concluirOnboarding() {
   const p = perfilOB();
   S.perfil = p;
   S.pesos = [{ d: hojeISO(), kg: p.peso }];
-  if (OB.modelo != null && OB.modelo >= 0) aplicarModelo(window.MODELOS_FICHA[OB.modelo]);
+  if (p.estilo !== 'arlivre' && OB.modelo != null && OB.modelo >= 0) aplicarModelo(window.MODELOS_FICHA[OB.modelo]);
   salvar('main'); OB = null;
   entrarApp(); toast('Plano criado! Bora evoluir 💪');
 }
@@ -893,8 +958,9 @@ function semanaHTML() {
   let dias = '';
   for (let i = 0; i < 7; i++) {
     const d = addDias(ini, i), x = parseISO(d);
-    const cls = ['dia-b', d === DIA ? 'sel' : '', d === h ? 'hoje' : '', sessoesDoDia(d).length ? 'ok' : '', d > h ? 'fut' : ''].join(' ');
-    dias += `<button class="${cls}" data-act="dia" data-d="${d}"><span>${DIAS_CURTO[x.getDay()]}</span><span class="n">${sessoesDoDia(d).length && d !== DIA ? ic('check', 18, 3) : x.getDate()}${metaDietaOk(d) ? '<i class="pt"></i>' : ''}</span></button>`;
+    const treinou = sessoesDoDia(d).length || ativDoDia(d).length;
+    const cls = ['dia-b', d === DIA ? 'sel' : '', d === h ? 'hoje' : '', treinou ? 'ok' : '', d > h ? 'fut' : ''].join(' ');
+    dias += `<button class="${cls}" data-act="dia" data-d="${d}"><span>${DIAS_CURTO[x.getDay()]}</span><span class="n">${treinou && d !== DIA ? ic('check', 18, 3) : x.getDate()}${metaDietaOk(d) ? '<i class="pt"></i>' : ''}</span></button>`;
   }
   return `<div class="semana"><button class="seta" data-act="semana" data-v="-7" aria-label="Semana anterior">${ic('esq', 18)}</button><div class="dias">${dias}</div><button class="seta" data-act="semana" data-v="7" aria-label="Próxima semana">${ic('dir', 18)}</button></div>`;
 }
@@ -908,15 +974,17 @@ function cardCalorias(t, m, titulo, acao) {
     <div class="card-h"><h3>${titulo}</h3>${acao || ''}</div>
     <div class="row sb">
       <div><div class="lbl">Meta diária</div><div class="val">${nf(m.kcal)} kcal</div><div class="lbl">Consumido</div><div class="val" style="margin:0">${nf(t.kcal)} kcal</div>
-      ${t.semKcal ? `<div class="tiny warn mt">${t.semKcal} item(ns) sem kcal na fonte</div>` : ''}</div>
+      ${t.semKcal ? `<div class="tiny warn mt">${t.semKcal} item(ns) sem kcal na fonte</div>` : ''}
+      ${m.extraAtiv ? `<div class="tiny ac mt">Inclui +${nf(m.extraAtiv)} kcal das atividades</div>` : ''}</div>
       ${anel(t.kcal / m.kcal, passou ? 'var(--red)' : 'var(--ac)', 128, 12, `<b>${nf(Math.abs(rest))}</b><span>${passou ? 'Acima da meta' : 'Restantes'}</span>`)}
     </div>${macrosHTML(t, m)}</div>`;
 }
 function vHoje() {
-  const m = metas(), t = totais(DIA), d = D[DIA] || { agua: 0, supl: {} };
+  const m = metasDia(DIA), t = totais(DIA), d = D[DIA] || { agua: 0, supl: {} };
   return cardAtualizacao() + semanaHTML()
     + cardCalorias(t, m, tituloData(DIA), `<button class="link" data-act="ir" data-v="perfil">Editar</button>`)
-    + cardTreinoDia()
+    + (usaAcademia() ? cardTreinoDia() : '')
+    + cardAtividades()
     + cardAgua(d, m)
     + cardSupl(d)
     + `<div class="sec-h"><h3>Refeições</h3><button class="icone-btn" data-act="ir" data-v="dieta" aria-label="Abrir dieta">${ic('pontos', 20)}</button></div>`
@@ -938,10 +1006,26 @@ function cardTreinoDia() {
   const grupos = [...new Set(f.itens.map(i => exPorId(i.ex).grupo))].slice(0, 4).join(' · ');
   return `<div class="card"><div class="row sb"><div class="grow"><div class="lbl">Treino de hoje</div><h3 class="ellipsis">${esc(f.nome)}</h3><div class="small sub">${f.itens.length} exercícios · ${esc(grupos)}${ult ? ' · último em ' + fmtData(iso(new Date(ult.ini))) : ''}</div></div><button class="btn" data-act="iniciarTreino" data-id="${f.id}">${ic('play', 14)} Começar</button></div></div>`;
 }
+function barraMetaKm() {
+  const meta = S.config.metaKm; if (!meta) return '';
+  const km = totaisAtiv(iniSemana(), hojeISO()).km;
+  return `<div class="mt"><div class="row sb small"><span class="sub">Meta da semana</span><span><b>${nf(km, 1)}</b> / ${nf(meta, 1)} km${km >= meta ? ' <span class="ac">✓</span>' : ''}</span></div><div style="margin-top:6px">${barra(km / meta)}</div></div>`;
+}
+const linhaAtiv = a => `<button class="item" style="width:100%;text-align:left" data-act="verAtiv" data-id="${a.id}"><span style="font-size:24px">${TIPOS_ATIV[a.tipo].em}</span><div class="grow"><div class="t">${TIPOS_ATIV[a.tipo].t}${a.km ? ' · ' + nf(a.km, 2) + ' km' : ''}</div><div class="d">${fmtTempo(a.dur)}${leituraAtiv(a) ? ' · ' + leituraAtiv(a) : ''} · ${nf(a.kcal)} kcal</div></div>${ic('dir', 18)}</button>`;
+function cardAtividades() {
+  const hoje = ativDoDia(DIA);
+  if (!usaArLivre() && !hoje.length) return '';
+  const titulo = hoje.length ? `<div class="lbl ac">${ic('check', 14, 3)} Atividade${hoje.length > 1 ? 's' : ''} ${DIA === hojeISO() ? 'de hoje' : 'do dia'}</div>` : `<div class="lbl">${ic('corrida', 14)} Ar livre</div>`;
+  return `<div class="card"><div class="row sb"><div class="grow">${titulo}${hoje.length ? '' : `<h3>${DIA === hojeISO() ? 'Bora se mexer?' : 'Nenhuma atividade'}</h3><div class="small sub">Caminhada, corrida ou bike</div>`}</div>
+    ${DIA <= hojeISO() ? `<button class="btn ${hoje.length ? 'sec peq' : ''}" data-act="novaAtiv">${ic('mais', 14)} ${hoje.length ? 'Outra' : 'Registrar'}</button>` : ''}</div>
+    ${hoje.length ? `<div class="mt">${hoje.map(linhaAtiv).join('')}</div>` : ''}${barraMetaKm()}</div>`;
+}
+const fmtMl = ml => ml >= 1000 ? nf(ml / 1000, ml % 1000 ? 1 : 0) + ' L' : ml + ' ml';
 function cardAgua(d, m) {
   const ml = d.agua || 0, copos = Math.ceil(m.agua / 250), cheios = Math.floor(ml / 250);
   return `<div class="card"><div class="row sb"><div><div class="lbl">${ic('gota', 14)} Água</div><div><b class="big blue" style="font-size:26px">${nf(ml / 1000, 2)}</b> <span class="sub">/ ${nf(m.agua / 1000, 1)} L</span></div></div>
-    <div class="row"><button class="icone-btn" data-act="agua" data-v="-250" aria-label="Remover 250 ml">${ic('menos', 18)}</button><button class="btn sec peq" data-act="agua" data-v="250">+250</button><button class="btn peq" style="background:var(--blue);color:#fff" data-act="agua" data-v="500">+500 ml</button></div></div>
+    ${ml > 0 ? `<button class="icone-btn" data-act="aguaDesfazer" aria-label="Desfazer o último registro de água">${ic('desfazer', 18)}</button>` : ''}</div>
+    <div class="agua-bts">${S.config.copos.map(v => `<button class="btn peq" style="background:var(--blue);color:#fff" data-act="agua" data-v="${v}">+${fmtMl(v)}</button>`).join('')}<button class="btn sec peq" data-act="aguaOutro">Outro</button></div>
     <div class="row mt" style="gap:4px">${Array.from({ length: copos }, (_, i) => `<i style="flex:1;height:8px;border-radius:4px;background:${i < cheios ? 'var(--blue)' : 'var(--card3)'}"></i>`).join('')}</div></div>`;
 }
 function cardSupl(d) {
@@ -976,7 +1060,7 @@ function listaRefeicoes(t, m, compacto) {
   }).join('');
 }
 function vDieta() {
-  const m = metas(), t = totais(DIA);
+  const m = metasDia(DIA), t = totais(DIA);
   const kc = t.p * 4 + t.c * 4 + t.g * 9 || 1;
   const dist = [['Proteína', t.p * 4 / kc, 'var(--prot)'], ['Carboidrato', t.c * 4 / kc, 'var(--carb)'], ['Gordura', t.g * 9 / kc, 'var(--gord)']];
   return `<div class="row sb mb"><button class="icone-btn" data-act="mudaDia" data-v="-1">${ic('esq', 20)}</button><div class="c"><h3>${tituloData(DIA)}</h3><div class="tiny sub">${fmtDataLonga(DIA)}</div></div><button class="icone-btn" data-act="mudaDia" data-v="1">${ic('dir', 20)}</button></div>
@@ -1127,8 +1211,16 @@ async function buscarCodigo(cod) {
 
 // ======================= TREINO =======================
 function vTreino() {
+  // Quem escolheu "ar livre" vai direto para caminhada/corrida/bike; "os dois" alterna entre Academia e Ar livre
+  if (!usaAcademia()) return treinoArLivre();
+  if (!SUB.modo) SUB.modo = 'academia';
+  let topoModo = '';
+  if (usaArLivre()) {
+    topoModo = `<div class="tipo-ativ" style="grid-template-columns:1fr 1fr;margin-bottom:12px">${[['academia', '🏋️', 'Academia'], ['ar', '🏃', 'Ar livre']].map(([v, em, t]) => `<button class="${SUB.modo === v ? 'on' : ''}" data-act="modoTreino" data-v="${v}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:10px"><span style="font-size:18px">${em}</span>${t}</button>`).join('')}</div>`;
+    if (SUB.modo === 'ar') return topoModo + treinoArLivre();
+  }
   const s = SUB.treino;
-  let h = seg('treino', [['fichas', 'Fichas'], ['hist', 'Histórico'], ['rec', 'Recordes'], ['ex', 'Exercícios']]);
+  let h = topoModo + seg('treino', [['fichas', 'Fichas'], ['hist', 'Histórico'], ['rec', 'Recordes'], ['ex', 'Exercícios']]);
   if (s === 'fichas') h += treinoFichas();
   if (s === 'hist') h += treinoHistorico();
   if (s === 'rec') h += treinoRecordes();
@@ -1193,6 +1285,100 @@ function listaExHTML(f, acao) {
   const l = todosEx().filter(e => (!f.g || e.grupo === f.g) && (!q || norm(e.nome).includes(q)));
   if (!l.length) return '<div class="vazio">Nenhum exercício encontrado.</div>';
   return l.map(e => `<button class="res-item" data-act="${acao}" data-id="${e.id}"><div class="grow"><div class="t">${esc(e.nome)}</div><div class="d small sub">${esc(e.grupo)} · ${esc(e.equip || '')}${e.meu ? ' <span class="badge user">MEU</span>' : ''}</div></div>${ic(acao === 'verExercicio' ? 'dir' : 'mais', 18)}</button>`).join('');
+}
+
+// --- Ar livre: caminhada, corrida e bike ---
+function treinoArLivre() {
+  const h0 = hojeISO(), sem = totaisAtiv(iniSemana(), h0), mes = totaisAtiv(h0.slice(0, 8) + '01', h0);
+  let h = `<div class="card"><div class="card-h"><h3>Registrar atividade</h3></div>
+    <div class="tipo-ativ">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button data-act="novaAtiv" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+    <p class="tiny mut mt">Informe tempo e distância depois da atividade. A medição automática por GPS chega na próxima versão do app Android.</p></div>`;
+  h += `<div class="card"><div class="card-h"><h3>Meta semanal</h3><button class="link" data-act="cfgAtiv">${S.config.metaKm ? 'Editar' : 'Definir'}</button></div>
+    ${S.config.metaKm ? barraMetaKm() : '<div class="small sub">Defina quantos km quer fazer por semana e acompanhe a barra na tela Hoje.</div>'}</div>`;
+  h += `<div class="grid3 mb">${[[sem.km, 'km na semana', 'ac'], [mes.km, 'km no mês', ''], [mes.n, 'atividades no mês', '']].map(([v, t, c], i) => `<div class="card c" style="margin:0"><div class="big ${c}" style="font-size:24px">${nf(v, i < 2 ? 1 : 0)}</div><div class="tiny sub">${t}</div></div>`).join('')}</div>`;
+  if (!ATIV.length) return h + '<div class="vazio">Suas caminhadas, corridas e pedaladas aparecem aqui.</div>';
+  h += `<div class="sec-h"><h3>Histórico</h3><button class="link" data-act="ir" data-v="evo" data-sub="ativ">Evolução</button></div>`;
+  let mesAtual = '';
+  for (const a of ATIV.slice(0, 60)) {
+    const d = new Date(a.ini), m = `${MESES_LONGO[d.getMonth()]} de ${d.getFullYear()}`;
+    if (m !== mesAtual) { mesAtual = m; h += `<div class="sec-h"><h4 style="text-transform:capitalize">${m}</h4></div>`; }
+    h += `<div class="card" style="padding:6px 14px"><div class="tiny sub" style="padding-top:8px">${DIAS_CURTO[d.getDay()]}, ${pad(d.getDate())}/${pad(d.getMonth() + 1)} · ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>${linhaAtiv(a)}</div>`;
+  }
+  return h;
+}
+function abrirRegistrarAtiv(tipo, id) {
+  const orig = id && ATIV.find(a => a.id === id);
+  const base = orig ? new Date(orig.ini) : (DIA === hojeISO() ? new Date() : new Date(parseISO(DIA).setHours(7, 0, 0, 0)));
+  const dur = orig ? orig.dur : 0;
+  const st = orig ? { tipo: orig.tipo, d: iso(base), hora: `${pad(base.getHours())}:${pad(base.getMinutes())}`, h: Math.floor(dur / 3600) || '', min: Math.floor(dur / 60) % 60 || '', seg: dur % 60 || '', km: orig.km ? String(orig.km).replace('.', ',') : '', notas: orig.notas || '' }
+    : { tipo: tipo || 'caminhada', d: iso(base), hora: `${pad(base.getHours())}:${pad(base.getMinutes())}`, h: '', min: '', seg: '', km: '', notas: '' };
+  const calc = () => { const dur = (num(st.h) || 0) * 3600 + (num(st.min) || 0) * 60 + (num(st.seg) || 0), km = num(st.km) || 0; return { dur, km, a: { tipo: st.tipo, dur, km } }; };
+  const prev = () => {
+    const { dur, km, a } = calc(); if (!dur) return '<span class="sub">Informe a duração para ver ritmo e calorias.</span>';
+    const k = kcalAtiv(st.tipo, dur, km, pesoAtual());
+    return `<div class="grid3 c"><div><div class="tiny sub">${st.tipo === 'bike' ? 'Velocidade' : 'Ritmo'}</div><b>${km ? leituraAtiv(a) : '–'}</b></div><div><div class="tiny sub">Tempo</div><b>${fmtTempo(dur)}</b></div><div><div class="tiny sub">Calorias*</div><b>${nf(k)} kcal</b></div></div>`;
+  };
+  abrirSheet({
+    cls: 'alto', st, orig, calc, prev,
+    render: () => `${cabecalho(orig ? 'Editar atividade' : 'Registrar atividade')}
+      <div class="tipo-ativ mb">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button class="${st.tipo === k ? 'on' : ''}" data-act="ativTipo" data-v="${k}"><span class="em">${T.em}</span>${T.t}</button>`).join('')}</div>
+      <div class="grid2"><label class="campo"><span>Data</span><input type="date" data-in="ativCampo" data-k="d" value="${st.d}" max="${hojeISO()}"></label>
+      <label class="campo"><span>Início</span><input type="time" data-in="ativCampo" data-k="hora" value="${st.hora}"></label></div>
+      <div class="lbl mb">Duração</div>
+      <div class="grid3"><label class="campo"><span>Horas</span><input type="number" inputmode="numeric" min="0" data-in="ativCampo" data-k="h" value="${esc(st.h)}" placeholder="0"></label>
+      <label class="campo"><span>Minutos</span><input id="ativ-min" type="number" inputmode="numeric" min="0" max="59" data-in="ativCampo" data-k="min" value="${esc(st.min)}" placeholder="30"></label>
+      <label class="campo"><span>Segundos</span><input type="number" inputmode="numeric" min="0" max="59" data-in="ativCampo" data-k="seg" value="${esc(st.seg)}" placeholder="0"></label></div>
+      <label class="campo"><span>Distância (km) – opcional</span><input type="text" inputmode="decimal" data-in="ativCampo" data-k="km" value="${esc(st.km)}" placeholder="5,0"></label>
+      <div class="card dois" id="ativ-prev">${prev()}</div>
+      <label class="campo"><span>Anotação – opcional</span><input data-in="ativCampo" data-k="notas" value="${esc(st.notas)}" placeholder="Ex.: percurso do parque, com subida"></label>
+      <p class="tiny mut">* Calorias estimadas pelo seu peso, tempo e velocidade (Compendium of Physical Activities). Sem a distância, usamos um ritmo moderado.</p>
+      <div class="row mt">${orig ? `<button class="btn perigo" data-act="apagarAtiv" data-id="${orig.id}">${ic('lixo', 18)}</button>` : ''}<button class="btn grow" data-act="salvarAtiv">Salvar</button></div>`,
+    depois: () => { if (!orig && !st.min && !st.h) setTimeout(() => { const i = $('#ativ-min'); i && i.focus(); }, 100); },
+  });
+}
+function abrirDetalheAtiv(id) {
+  const a = ATIV.find(x => x.id === id); if (!a) return;
+  const T = TIPOS_ATIV[a.tipo], d = new Date(a.ini);
+  abrirSheet({
+    render: () => `${cabecalho(T.em + ' ' + T.t)}
+      <div class="small sub">${DIAS_LONGO[d.getDay()]}, ${fmtDataLonga(iso(d))} · ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}${a.origem === 'gps' ? ' · GPS' : ' · registro manual'}</div>
+      <div class="grid2 mt">${[['Distância', a.km ? nf(a.km, 2) + ' km' : '–'], ['Tempo', fmtTempo(a.dur)], [a.tipo === 'bike' ? 'Velocidade média' : 'Ritmo médio', leituraAtiv(a) || '–'], ['Calorias (estim.)', nf(a.kcal) + ' kcal']].map(([t, v]) => `<div class="card dois c" style="margin:0"><div class="lbl">${t}</div><b style="font-size:20px">${v}</b></div>`).join('')}</div>
+      ${a.notas ? `<p class="small mt">${esc(a.notas)}</p>` : ''}
+      <div class="row mt2"><button class="btn perigo" data-act="apagarAtiv" data-id="${a.id}">${ic('lixo', 18)}</button><button class="btn sec grow" data-act="editarAtiv" data-id="${a.id}">${ic('lapis', 18)} Editar</button></div>`,
+  });
+}
+function abrirCfgAtiv() {
+  const st = { metaKm: S.config.metaKm ? String(S.config.metaKm).replace('.', ',') : '' };
+  const sedentario = S.perfil.atividade === 1.2;
+  abrirSheet({
+    st,
+    render: () => `${cabecalho('Atividades ao ar livre')}
+      <label class="campo"><span>Meta semanal (km) – deixe em branco para não usar</span><input type="text" inputmode="decimal" data-in="cfgAtivCampo" data-k="metaKm" value="${esc(st.metaKm)}" placeholder="15"></label>
+      <div class="lbl mb">Calorias das atividades na meta do dia</div>
+      ${sedentario ? `<button class="item" style="width:100%" data-act="cfgToggle" data-k="somarAtiv"><div class="grow" style="text-align:left"><div class="t">Somar na meta de calorias</div><div class="d">Correu 400 kcal? A meta do dia sobe 400 kcal (no carboidrato).</div></div><span class="chip ${S.config.somarAtiv ? 'on' : ''}">${S.config.somarAtiv ? 'Ligado' : 'Desligado'}</span></button>`
+      : `<p class="small sub">Seu nível de atividade (${esc((ATIVIDADES.find(x => x.f === S.perfil.atividade) || {}).t || '')}) já inclui o exercício na meta de calorias, então as atividades aparecem só no resumo, sem contar duas vezes. Para somar, mude o nível para "Sedentário" no perfil.</p>`}
+      <button class="btn bl mt" data-act="salvarCfgAtiv">Salvar</button>`,
+  });
+}
+function abrirAguaOutro() {
+  const st = { ml: '' };
+  abrirSheet({
+    st,
+    render: () => `${cabecalho('Quanto de água?')}
+      <label class="campo"><span>Quantidade (ml)</span><input id="agua-ml" type="number" inputmode="numeric" data-in="aguaCampo" value="${esc(st.ml)}" placeholder="750"></label>
+      <button class="btn bl" style="background:var(--blue);color:#fff" data-act="aguaOutroOk">Adicionar</button>`,
+    depois: () => setTimeout(() => { const i = $('#agua-ml'); i && i.focus(); }, 100),
+  });
+}
+function abrirCopos() {
+  const st = { l: S.config.copos.map(String).concat(['', '', '', '']).slice(0, 4) };
+  abrirSheet({
+    st,
+    render: () => `${cabecalho('Botões de água')}
+      <p class="small sub" style="margin-top:0">Até 4 botões na tela Hoje, em ml. Ex.: seu copo, sua garrafa. Deixe em branco para remover.</p>
+      <div class="grid2">${st.l.map((v, i) => `<label class="campo"><span>Botão ${i + 1} (ml)</span><input type="number" inputmode="numeric" data-in="coposCampo" data-i="${i}" value="${esc(v)}"></label>`).join('')}</div>
+      <div class="row"><button class="btn sec" data-act="coposPadrao">Padrão</button><button class="btn grow" data-act="salvarCopos">Salvar</button></div>`,
+  });
 }
 
 // --- Editor de ficha ---
@@ -1419,10 +1605,13 @@ const MEDIDAS = [['peito', 'Peito', true], ['cintura', 'Cintura', false], ['abdo
 let PERIODO = 90;
 function vEvo() {
   const s = SUB.evo;
-  let h = seg('evo', [['corpo', 'Peso'], ['medidas', 'Medidas'], ['carga', 'Carga'], ['fotos', 'Fotos'], ['conq', 'Conquistas']]);
+  const abas = [['corpo', 'Peso'], ['medidas', 'Medidas']].concat(usaAcademia() ? [['carga', 'Carga']] : [], usaArLivre() ? [['ativ', 'Atividades']] : [], [['fotos', 'Fotos'], ['conq', 'Conquistas']]);
+  if (!abas.some(a => a[0] === s)) { SUB.evo = 'corpo'; return vEvo(); }
+  let h = seg('evo', abas);
   if (s === 'corpo') h += evoCorpo();
   if (s === 'medidas') h += evoMedidas();
   if (s === 'carga') h += evoCarga();
+  if (s === 'ativ') h += evoAtiv();
   if (s === 'fotos') h += '<div id="fotos-area"><div class="vazio">Carregando fotos…</div></div>';
   if (s === 'conq') h += evoConquistas();
   return h;
@@ -1503,6 +1692,40 @@ function evoCarga() {
     <select data-in="exCarga" class="mb">${exHist.map(id => `<option value="${id}" ${id === sel ? 'selected' : ''}>${esc(exPorId(id).nome)}</option>`).join('')}</select>
     ${grafLinha(pts, { vazio: 'Faça este exercício em pelo menos 2 treinos para ver o gráfico.' })}<div class="tiny mut mt">Melhor 1RM estimado (Epley) de cada treino.</div></div>` : ''}`;
 }
+// Recordes: tempo para 5 e 10 km vem do ritmo médio de corridas com pelo menos essa distância
+function recordesAtiv() {
+  const R = [], corr = ATIV.filter(a => a.tipo === 'corrida' && a.km > 0 && a.dur > 0);
+  const melhorTempo = dist => { const l = corr.filter(a => a.km >= dist); if (!l.length) return null; const a = l.reduce((x, y) => ritmoAtiv(y) < ritmoAtiv(x) ? y : x); return { a, v: fmtTempo(ritmoAtiv(a) * 60 * dist), info: fmtRitmo(ritmoAtiv(a)) + ' /km' }; };
+  const maior = tipo => { const l = ATIV.filter(a => a.tipo === tipo && a.km > 0); if (!l.length) return null; const a = l.reduce((x, y) => y.km > x.km ? y : x); return { a, v: nf(a.km, 2) + ' km', info: fmtTempo(a.dur) }; };
+  const r5 = melhorTempo(5), r10 = melhorTempo(10);
+  if (r5) R.push(['🏃', '5 km mais rápido', r5]);
+  if (r10) R.push(['🏃', '10 km mais rápido', r10]);
+  [['corrida', '🏃', 'Corrida mais longa'], ['caminhada', '🚶', 'Caminhada mais longa'], ['bike', '🚴', 'Maior pedalada']].forEach(([t, em, n]) => { const r = maior(t); if (r) R.push([em, n, r]); });
+  const vel = ATIV.filter(a => a.tipo === 'bike' && velAtiv(a)); if (vel.length) { const a = vel.reduce((x, y) => velAtiv(y) > velAtiv(x) ? y : x); R.push(['🚴', 'Pedalada mais rápida', { a, v: nf(velAtiv(a), 1) + ' km/h', info: nf(a.km, 1) + ' km' }]); }
+  return R;
+}
+function evoAtiv() {
+  if (!ATIV.length) return `<div class="card c"><div style="font-size:38px">🏃</div><h3 class="mt">Nenhuma atividade ainda</h3><p class="sub small">Registre caminhadas, corridas e pedaladas para ver totais, recordes e a evolução do seu ritmo.</p><button class="btn bl mt" data-act="novaAtiv">Registrar atividade</button></div>`;
+  const h0 = hojeISO(), sem = totaisAtiv(iniSemana(), h0), mes = totaisAtiv(h0.slice(0, 8) + '01', h0);
+  const bloco = (t, titulo) => `<div class="card dois" style="margin:0"><div class="lbl">${titulo}</div><b style="font-size:22px">${nf(t.km, 1)} km</b><div class="tiny sub">${t.n} atividade${t.n === 1 ? '' : 's'} · ${fmtTempo(t.dur)}</div>
+    ${Object.entries(TIPOS_ATIV).filter(([k]) => t.tipos[k]).map(([k, T]) => `<div class="tiny mt" style="margin-top:6px">${T.em} ${nf(t.tipos[k].km, 1)} km <span class="sub">· ${t.tipos[k].n}x</span></div>`).join('')}</div>`;
+  let h = `<div class="grid2 mb">${bloco(sem, 'Esta semana')}${bloco(mes, 'Este mês')}</div>`;
+  h += `<div class="card"><div class="card-h"><h4>Meta semanal</h4><button class="link" data-act="cfgAtiv">${S.config.metaKm ? 'Editar' : 'Definir'}</button></div>${S.config.metaKm ? barraMetaKm() : '<div class="small sub">Sem meta definida.</div>'}</div>`;
+  const ini0 = addDias(iniSemana(), -49);
+  const semanas = Array.from({ length: 8 }, (_, i) => { const a = addDias(ini0, i * 7); return { l: fmtData(a), v: r1(totaisAtiv(a, addDias(a, 6)).km), dest: i === 7 }; });
+  h += `<div class="card"><div class="card-h"><h4>Km por semana</h4><span class="small sub">8 semanas</span></div>${grafBarras(semanas, { fmt: v => nf(v, v < 10 ? 1 : 0) })}</div>`;
+  const tipo = SUB.ritmo, bike = tipo === 'bike';
+  const pts = ATIV.filter(a => a.tipo === tipo && a.km > 0 && a.dur > 0).map(a => ({ x: a.ini, y: bike ? r1(velAtiv(a)) : ritmoAtiv(a) })).reverse();
+  h += `<div class="card"><div class="card-h"><h4>${bike ? 'Velocidade média' : 'Ritmo médio'}</h4><span class="small sub">${bike ? 'km/h · maior é melhor' : 'min/km · menor é melhor'}</span></div>
+    <div class="chips mb">${Object.entries(TIPOS_ATIV).map(([k, T]) => `<button class="chip ${tipo === k ? 'on' : ''}" data-act="ritmoTipo" data-v="${k}">${T.em} ${T.t}</button>`).join('')}</div>
+    ${grafLinha(pts, bike ? { casas: 1, vazio: 'Registre pelo menos 2 pedaladas com distância para ver o gráfico.' } : { fmt: fmtRitmo, cor: '#0a84ff', vazio: `Registre pelo menos 2 ${tipo === 'corrida' ? 'corridas' : 'caminhadas'} com distância para ver o gráfico.` })}</div>`;
+  const rec = recordesAtiv();
+  h += `<div class="sec-h"><h3>Recordes</h3></div>`;
+  h += rec.length ? rec.map(([em, n, r]) => `<button class="card" style="display:block;width:100%;text-align:left" data-act="verAtiv" data-id="${r.a.id}"><div class="row sb"><div class="grow"><b>${em} ${n}</b><div class="small sub">${fmtDataLonga(iso(new Date(r.a.ini)))} · ${r.info}</div></div><b class="ac" style="font-size:18px">${r.v}</b></div></button>`).join('')
+    + '<p class="tiny mut">Tempos de 5 e 10 km estimados pelo ritmo médio de corridas com pelo menos essa distância.</p>'
+    : '<div class="vazio">Registre atividades com distância para ver seus recordes.</div>';
+  return h;
+}
 async function desenharFotos() {
   const area = $('#fotos-area'); if (!area) return;
   try { await carregarFotos(); } catch (e) { area.innerHTML = '<div class="vazio">Não foi possível carregar as fotos.</div>'; return; }
@@ -1514,19 +1737,26 @@ async function desenharFotos() {
 }
 function evoConquistas() {
   const nT = SESS.length, seq = sequencia();
-  let maxSeq = 0; { let c = 0; const dias = new Set(Object.keys(D).filter(diaAtivo).concat(SESS.map(s => iso(new Date(s.ini))))); [...dias].sort().forEach((d, i, a) => { c = i && difDias(a[i - 1], d) === 1 ? c + 1 : 1; maxSeq = Math.max(maxSeq, c); }); }
+  let maxSeq = 0; { let c = 0; const dias = new Set(Object.keys(D).filter(diaAtivo).concat(SESS.map(s => iso(new Date(s.ini))), ATIV.map(a => iso(new Date(a.ini))))); [...dias].sort().forEach((d, i, a) => { c = i && difDias(a[i - 1], d) === 1 ? c + 1 : 1; maxSeq = Math.max(maxSeq, c); }); }
   const prs = SESS.reduce((a, s) => a + (s.prs || 0), 0);
   const p = pesosOrd(), mudKg = p.length ? Math.abs(p[p.length - 1].kg - p[0].kg) : 0;
   const m = metas(); const diasAgua = Object.values(D).filter(x => (x.agua || 0) >= m.agua).length;
   const diasDieta = Object.keys(D).filter(metaDietaOk).length;
   const vol = SESS.reduce((a, s) => a + volumeSessao(s), 0);
+  const kmMes = {}; ATIV.forEach(a => { const k = iso(new Date(a.ini)).slice(0, 7); kmMes[k] = (kmMes[k] || 0) + (a.km || 0); });
+  const maxKmMes = Math.max(0, ...Object.values(kmMes)), maxCorr = Math.max(0, ...ATIV.filter(a => a.tipo === 'corrida').map(a => a.km || 0)), maxBike = Math.max(0, ...ATIV.filter(a => a.tipo === 'bike').map(a => a.km || 0));
+  const kmTotal = ATIV.reduce((s, a) => s + (a.km || 0), 0);
+  const LA = [['👟', 'Primeira atividade', ATIV.length, 1], ['🏃', 'Corrida de 5 km', maxCorr, 5], ['🏅', 'Corrida de 10 km', maxCorr, 10], ['🗺️', '100 km em um mês', maxKmMes, 100], ['🚴', 'Pedalada de 50 km', maxBike, 50], ['🌎', '500 km no total', kmTotal, 500]];
   const L = [
     ['🏁', 'Primeiro treino', nT, 1], ['💪', '10 treinos', nT, 10], ['🏋️', '50 treinos', nT, 50], ['👑', '100 treinos', nT, 100],
     ['🔥', '7 dias seguidos', maxSeq, 7], ['⚡', '30 dias seguidos', maxSeq, 30], ['🏆', 'Primeiro recorde', prs, 1], ['🥇', '25 recordes', prs, 25],
     ['🎯', 'Meta de calorias 7x', diasDieta, 7], ['💧', 'Meta de água 7x', diasAgua, 7], ['⚖️', '5 kg de mudança', mudKg, 5], ['🚀', '100 t levantadas', vol / 1000, 100],
   ];
-  return `<div class="card c"><div class="lbl">Sequência atual</div><div class="big warn">${ic('fogo', 26)} ${seq} dia${seq === 1 ? '' : 's'}</div><div class="small sub">Recorde: ${maxSeq} dias · conta dias com treino, refeição ou água registrados</div></div>
-  <div class="conq">${L.map(([em, t, v, alvo]) => `<div class="${v >= alvo ? 'on' : ''}"><div class="em">${em}</div><b>${t}</b><span>${v >= alvo ? 'Conquistado' : `${nf(Math.min(v, alvo), Number.isInteger(v) ? 0 : 1)} / ${alvo}`}</span></div>`).join('')}</div>`;
+  // Conquistas de academia só para quem usa academia; as de ar livre para quem corre, caminha ou pedala
+  const ACAD = new Set(['Primeiro treino', '10 treinos', '50 treinos', '100 treinos', 'Primeiro recorde', '25 recordes', '100 t levantadas']);
+  const lista = (usaAcademia() ? L : L.filter(x => !ACAD.has(x[1]))).concat(usaArLivre() ? LA : []);
+  return `<div class="card c"><div class="lbl">Sequência atual</div><div class="big warn">${ic('fogo', 26)} ${seq} dia${seq === 1 ? '' : 's'}</div><div class="small sub">Recorde: ${maxSeq} dias · conta dias com treino, atividade, refeição ou água registrados</div></div>
+  <div class="conq">${lista.map(([em, t, v, alvo]) => `<div class="${v >= alvo ? 'on' : ''}"><div class="em">${em}</div><b>${t}</b><span>${v >= alvo ? 'Conquistado' : `${nf(Math.min(v, alvo), Number.isInteger(v) ? 0 : 1)} / ${alvo}`}</span></div>`).join('')}</div>`;
 }
 function abrirPeso() {
   const st = { d: hojeISO(), kg: pesoAtual() || '' };
@@ -1563,7 +1793,8 @@ function vPerfil() {
   <div class="card"><div class="grid2 small">
     <div><span class="sub">Idade</span><br><b>${idade(p.nasc)} anos</b></div><div><span class="sub">Altura</span><br><b>${nf(p.altura)} cm</b></div>
     <div><span class="sub">Peso atual</span><br><b class="sens">${nf(pesoAtual(), 1)} kg</b></div><div><span class="sub">Meta de peso</span><br><b class="sens">${p.metaPeso ? nf(p.metaPeso, 1) + ' kg' : '–'}</b></div>
-    <div><span class="sub">Atividade</span><br><b>${at ? at.t : '–'}</b></div><div><span class="sub">Objetivo</span><br><b>${OBJETIVOS[p.objetivo]?.t || '–'}</b></div></div></div>
+    <div><span class="sub">Atividade</span><br><b>${at ? at.t : '–'}</b></div><div><span class="sub">Objetivo</span><br><b>${OBJETIVOS[p.objetivo]?.t || '–'}</b></div>
+    <div><span class="sub">Estilo</span><br><b>${(ESTILOS.find(e => e[0] === estilo()) || [])[1] || '–'}</b></div></div></div>
   <div class="sec-h"><h3>Metas diárias</h3><button class="link" data-act="editarMetas">Editar</button></div>
   <div class="card"><div class="row sb"><div><div class="lbl">Calorias ${S.metas.auto ? '<span class="badge taco">AUTOMÁTICO</span>' : '<span class="badge user">MANUAL</span>'}</div><b class="big" style="font-size:26px">${nf(m.kcal)} kcal</b></div><div class="r small sub">Basal ${nf(m.tmb)}<br>Gasto total ${nf(m.get)}</div></div>
     <div class="grid3 mt small"><div><span style="color:var(--prot)">Proteína</span><br><b>${m.prot} g</b></div><div><span style="color:var(--carb)">Carboidrato</span><br><b>${m.carb} g</b></div><div><span style="color:var(--gord)">Gordura</span><br><b>${m.gord} g</b></div></div>
@@ -1571,11 +1802,13 @@ function vPerfil() {
   <div class="card">
     <button class="item" style="width:100%" data-act="editarRefeicoes">${ic('dieta', 20)}<div class="grow" style="text-align:left"><div class="t">Refeições do dia</div><div class="d">${S.refeicoes.map(r => esc(r.nome)).join(', ')}</div></div>${ic('dir', 18)}</button>
     <button class="item" style="width:100%" data-act="suplementos">${ic('pilula', 20)}<div class="grow" style="text-align:left"><div class="t">Suplementos e estoque</div><div class="d">${S.suplementos.length ? S.suplementos.map(s => esc(s.nome)).join(', ') : 'Nenhum cadastrado'}</div></div>${ic('dir', 18)}</button>
+    <button class="item" style="width:100%" data-act="copos">${ic('gota', 20)}<div class="grow" style="text-align:left"><div class="t">Botões de água</div><div class="d">${S.config.copos.map(fmtMl).join(' · ')} · e "Outro"</div></div>${ic('dir', 18)}</button>
+    ${usaArLivre() ? `<button class="item" style="width:100%" data-act="cfgAtiv">${ic('corrida', 20)}<div class="grow" style="text-align:left"><div class="t">Atividades ao ar livre</div><div class="d">${S.config.metaKm ? 'Meta de ' + nf(S.config.metaKm, 1) + ' km por semana' : 'Sem meta semanal'} · calorias ${S.perfil.atividade === 1.2 && S.config.somarAtiv ? 'somam na meta' : 'só no resumo'}</div></div>${ic('dir', 18)}</button>` : ''}
     <button class="item" style="width:100%" data-act="config">${ic('engrenagem', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências do treino</div><div class="d">Descanso padrão ${S.config.descanso}s · som ${S.config.som ? 'ligado' : 'desligado'} · vibração ${S.config.vibrar ? 'ligada' : 'desligada'}</div></div>${ic('dir', 18)}</button>
   </div>
   <div class="sec-h"><h3>Seus dados</h3></div>
   <div class="card">
-    <button class="item" style="width:100%" data-act="exportarExcel">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Exportar para Excel</div><div class="d">Peso, medidas, diário alimentar, treinos e fichas</div></div></button>
+    <button class="item" style="width:100%" data-act="exportarExcel">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Exportar para Excel</div><div class="d">Peso, medidas, diário alimentar, treinos, atividades e fichas</div></div></button>
     <button class="item" style="width:100%" data-act="backup">${ic('download', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar backup (.json)</div><div class="d">Cópia completa dos seus dados</div></div></button>
     <button class="item" style="width:100%" data-act="restaurar">${ic('upload', 20)}<div class="grow" style="text-align:left"><div class="t">Restaurar backup</div><div class="d">Substitui os dados atuais</div></div></button>
     ${!NATIVO ? `<a class="item" style="width:100%;color:inherit;text-decoration:none" href="${LINK_APK}">${ic('instalar', 20)}<div class="grow" style="text-align:left"><div class="t">Baixar app Android (APK)</div><div class="d">Versão mais recente, gerada automaticamente pelo GitHub</div></div></a>` : ''}
@@ -1596,6 +1829,7 @@ function abrirEditarPerfil() {
       <label class="campo"><span>Altura (cm)</span><input type="number" data-in="perfilCampo" data-k="altura" value="${esc(st.altura)}"></label>
       <label class="campo"><span>Meta de peso (kg)</span><input type="number" step="0.1" data-in="perfilCampo" data-k="metaPeso" value="${esc(st.metaPeso ?? '')}"></label></div>
       <label class="campo"><span>Nível de atividade</span><select data-in="perfilCampo" data-k="atividade">${ATIVIDADES.map(a => `<option value="${a.f}" ${a.f === st.atividade ? 'selected' : ''}>${a.t} – ${a.d}</option>`).join('')}</select></label>
+      <label class="campo"><span>Estilo de exercício</span><select data-in="perfilCampo" data-k="estilo">${ESTILOS.map(([v, t, d]) => `<option value="${v}" ${v === (st.estilo || 'ambos') ? 'selected' : ''}>${t} – ${d}</option>`).join('')}</select></label>
       <label class="campo"><span>Objetivo</span><select data-in="perfilCampo" data-k="objetivo">${Object.entries(OBJETIVOS).map(([k, o]) => `<option value="${k}" ${k === st.objetivo ? 'selected' : ''}>${o.t}</option>`).join('')}</select></label>
       <p class="tiny mut">O peso atual vem das pesagens (Evolução > Peso).</p>
       <button class="btn bl mt" data-act="salvarPerfil">Salvar</button>`,
@@ -1662,7 +1896,9 @@ function abrirConfig() {
   });
 }
 function abrirFab() {
-  const op = [['addAlim', 'dieta', 'Alimento', 'var(--ac)'], ['agua', 'gota', '+250 ml de água', 'var(--blue)'], ['iniciarProximo', 'treino', 'Iniciar treino', 'var(--ac)'], ['registrarPeso', 'balanca', 'Peso', 'var(--warn)'], ['registrarMedidas', 'regua', 'Medidas', 'var(--gord)'], ['novaFotoFab', 'camera', 'Foto de progresso', 'var(--carb)']];
+  const op = [['addAlim', 'dieta', 'Alimento', 'var(--ac)'], ['agua', 'gota', `+${fmtMl(S.config.copos[0])} de água`, 'var(--blue)']]
+    .concat(usaAcademia() ? [['iniciarProximo', 'treino', 'Iniciar treino', 'var(--ac)']] : [], usaArLivre() ? [['novaAtiv', 'corrida', 'Atividade', 'var(--ac)']] : [],
+      [['registrarPeso', 'balanca', 'Peso', 'var(--warn)'], ['registrarMedidas', 'regua', 'Medidas', 'var(--gord)'], ['novaFotoFab', 'camera', 'Foto de progresso', 'var(--carb)']]);
   abrirSheet({
     render: () => `${cabecalho('Registrar')}<div class="grid3">${op.map(([a, i, t, c]) => `<button class="card dois c" style="margin:0;padding:16px 8px" data-act="${a}" data-v="250" data-fab="1"><div style="color:${c}">${ic(i, 28)}</div><div class="small b mt">${t}</div></button>`).join('')}</div>`,
   });
@@ -1720,7 +1956,8 @@ function exportarExcel() {
   const abas = [
     { nome: 'Peso', linhas: [['Data', 'Peso (kg)', 'IMC']].concat(pesosOrd().map(p => [fmtDataLonga(p.d), p.kg, r1(imc(p.kg))])) },
     { nome: 'Medidas', linhas: [['Data'].concat(MEDIDAS.map(m => m[1] + (m[0] === 'gordura' ? ' (%)' : ' (cm)')))].concat([...S.medidas].sort((a, b) => a.d < b.d ? -1 : 1).map(r => [fmtDataLonga(r.d)].concat(MEDIDAS.map(([k]) => v(r[k]))))) },
-    { nome: 'Resumo diário', linhas: [['Data', 'Calorias (kcal)', 'Proteína (g)', 'Carboidrato (g)', 'Gordura (g)', 'Fibras (g)', 'Sódio (mg)', 'Água (ml)', 'Treinos']].concat(dias.map(d => { const t = totais(d); return [fmtDataLonga(d), Math.round(t.kcal), t.p, t.c, t.g, t.fi, Math.round(t.na), D[d].agua || 0, sessoesDoDia(d).length]; })) },
+    { nome: 'Resumo diário', linhas: [['Data', 'Calorias (kcal)', 'Proteína (g)', 'Carboidrato (g)', 'Gordura (g)', 'Fibras (g)', 'Sódio (mg)', 'Água (ml)', 'Treinos', 'Atividades (km)']].concat(dias.map(d => { const t = totais(d); return [fmtDataLonga(d), Math.round(t.kcal), t.p, t.c, t.g, t.fi, Math.round(t.na), D[d].agua || 0, sessoesDoDia(d).length, r1(ativDoDia(d).reduce((s, a) => s + (a.km || 0), 0))]; })) },
+    { nome: 'Atividades', linhas: [['Data', 'Início', 'Tipo', 'Duração (min)', 'Distância (km)', 'Ritmo (min/km)', 'Velocidade (km/h)', 'Calorias (kcal, estimativa)', 'Origem', 'Anotação']].concat([...ATIV].reverse().map(a => [fmtDataLonga(iso(new Date(a.ini))), new Date(a.ini).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), TIPOS_ATIV[a.tipo].t, r1(a.dur / 60), a.km || '', ritmoAtiv(a) ? fmtRitmo(ritmoAtiv(a)) : '', velAtiv(a) ? r1(velAtiv(a)) : '', a.kcal, a.origem === 'gps' ? 'GPS' : 'Manual', a.notas || ''])) },
     { nome: 'Diário alimentar', linhas: [['Data', 'Refeição', 'Alimento', 'Quantidade (g)', 'Calorias (kcal)', 'Proteína (g)', 'Carboidrato (g)', 'Gordura (g)', 'Fibras (g)', 'Sódio (mg)', 'Fonte']].concat(dias.flatMap(d => Object.entries(D[d].ref || {}).flatMap(([rid, l]) => l.map(i => [fmtDataLonga(d), nomeRef(rid), i.nome, i.gr, i.kcal == null ? 'não encontrado' : i.kcal, v(i.p), v(i.c), v(i.g), i.fi == null ? 'não encontrado' : i.fi, i.na == null ? 'não encontrado' : i.na, fonteTxt[i.fonte] || i.fonte])))) },
     { nome: 'Treinos', linhas: [['Data', 'Início', 'Duração (min)', 'Treino', 'Exercício', 'Grupo', 'Série', 'Peso (kg)', 'Repetições', 'Minutos', 'Km', 'Volume (kg)', 'Recorde']].concat([...SESS].reverse().flatMap(s => s.ex.flatMap(e => e.series.map((se, i) => [fmtDataLonga(iso(new Date(s.ini))), new Date(s.ini).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), Math.round((s.fim - s.ini) / 60000), s.nome, exPorId(e.id).nome, exPorId(e.id).grupo, i + 1, v(se.kg), v(se.reps), v(se.min), v(se.km), se.kg != null ? se.kg * se.reps : '', se.pr ? 'Sim' : ''])))) },
     { nome: 'Fichas', linhas: [['Ficha', 'Ordem', 'Exercício', 'Grupo', 'Séries', 'Repetições', 'Descanso (s)', 'Observação']].concat(S.fichas.flatMap(f => f.itens.map((it, i) => [f.nome, i + 1, exPorId(it.ex).nome, exPorId(it.ex).grupo, Number(it.series) || '', String(it.reps || ''), Number(it.desc) || '', it.obs || '']))) },
@@ -1729,18 +1966,19 @@ function exportarExcel() {
   toast('Planilha gerada!');
 }
 function baixarBackup() {
-  baixar(new Blob([JSON.stringify({ app: 'GymFlow', versao: 1, exportadoEm: new Date().toISOString(), S, D, SESS }, null, 1)], { type: 'application/json' }), `GymFlow_backup_${hojeISO()}.json`);
+  baixar(new Blob([JSON.stringify({ app: 'GymFlow', versao: 1, exportadoEm: new Date().toISOString(), S, D, SESS, ATIV }, null, 1)], { type: 'application/json' }), `GymFlow_backup_${hojeISO()}.json`);
 }
 async function restaurarBackup(file) {
   try {
     const j = JSON.parse(await file.text());
     if (j.app !== 'GymFlow' || !j.S) throw new Error('Arquivo não é um backup do GymFlow.');
     if (!(await confirmar('Substituir TODOS os dados atuais pelo backup de ' + (j.exportadoEm || '').slice(0, 10).split('-').reverse().join('/') + '?', 'Restaurar'))) return;
-    const antigosDias = Object.keys(D), antigasSess = SESS.map(s => s.id);
-    aplicar({ S: j.S, D: j.D || {}, SESS: j.SESS || [] });
+    const antigosDias = Object.keys(D), antigasSess = SESS.map(s => s.id), antigasAtiv = ATIV.map(a => a.id);
+    aplicar({ S: j.S, D: j.D || {}, SESS: j.SESS || [], ATIV: j.ATIV || [] });
     const chDias = [...new Set(antigosDias.concat(Object.keys(D)))].map(d => 'dia:' + d);
     const chSess = [...new Set(antigasSess.concat(SESS.map(s => s.id)))].map(id => 'sess:' + id);
-    salvar('main', ...chDias, ...chSess);
+    const chAtiv = [...new Set(antigasAtiv.concat(ATIV.map(a => a.id)))].map(id => 'ativ:' + id);
+    salvar('main', ...chDias, ...chSess, ...chAtiv);
     render(); toast('Backup restaurado!');
   } catch (e) { toast(e.message || 'Arquivo inválido.'); }
 }
@@ -1781,9 +2019,9 @@ const A = {
   obSet: ds => { OB.p[ds.k] = ds.k === 'atividade' ? Number(ds.v) : ds.v; desenharOnboarding(); },
   obModelo: ds => { OB.modelo = Number(ds.v); desenharOnboarding(); },
   obVoltar: () => { OB.passo--; desenharOnboarding(); },
-  obAvancar: () => { const e = validarOB(); if (e) { $('#ob-erro').textContent = e; return; } if (OB.passo === 5) return concluirOnboarding(); OB.passo++; desenharOnboarding(); window.scrollTo(0, 0); },
+  obAvancar: () => { const e = validarOB(); if (e) { $('#ob-erro').textContent = e; return; } if (OB.passo === ultimoPassoOB()) return concluirOnboarding(); OB.passo++; desenharOnboarding(); window.scrollTo(0, 0); },
   // --- navegação ---
-  ir: ds => { fecharTodas(); VIEW = ds.v; render(); window.scrollTo(0, 0); },
+  ir: ds => { fecharTodas(); VIEW = ds.v; if (ds.sub && ds.v === 'evo') SUB.evo = ds.sub; render(); window.scrollTo(0, 0); },
   sub: ds => { SUB[ds.k] = ds.v; render(); },
   dia: ds => { DIA = ds.d; render(); },
   semana: ds => { DIA = addDias(DIA, Number(ds.v)); render(); },
@@ -1793,7 +2031,61 @@ const A = {
   fecharSheet: () => fecharSheet(),
   conf: ds => { const t = PILHA.pop(); t.resolver(ds.v === '1'); desenharSheet(); },
   // --- hoje ---
-  agua: ds => { const d = getDia(DIA); d.agua = Math.max(0, (d.agua || 0) + Number(ds.v)); salvar('dia:' + DIA); render(); if (Number(ds.v) > 0) { const m = metas(); if (d.agua >= m.agua && d.agua - Number(ds.v) < m.agua) toast('Meta de água batida! 💧'); else toast(`+${ds.v} ml de água`); } },
+  agua: ds => {
+    const v = ds.fab ? S.config.copos[0] : Number(ds.v); if (!(v > 0)) return;
+    const d = getDia(DIA); d.agua = (d.agua || 0) + v; (d.aguaLog = d.aguaLog || []).push(v);
+    salvar('dia:' + DIA); render();
+    const m = metas(); if (d.agua >= m.agua && d.agua - v < m.agua) toast('Meta de água batida! 💧'); else toast(`+${fmtMl(v)} de água`);
+  },
+  // Desfaz o último registro (dias antigos, sem histórico de registros, tiram 250 ml como antes)
+  aguaDesfazer: () => {
+    const d = getDia(DIA); if (!(d.agua > 0)) return;
+    const v = d.aguaLog && d.aguaLog.length ? d.aguaLog.pop() : Math.min(250, d.agua);
+    d.agua = Math.max(0, d.agua - v); salvar('dia:' + DIA); render(); toast(`Removido: ${fmtMl(v)}`);
+  },
+  aguaOutro: () => abrirAguaOutro(),
+  aguaOutroOk: () => {
+    const v = Math.round(num(topo().st.ml) || 0); if (v < 10 || v > 5000) { toast('Informe entre 10 e 5000 ml.'); return; }
+    fecharSheet(); A.agua({ v });
+  },
+  copos: () => abrirCopos(),
+  coposPadrao: () => { topo().st.l = COPOS_PADRAO.map(String); redesenharSheet(); },
+  salvarCopos: () => {
+    const l = topo().st.l.map(num).filter(v => v != null);
+    if (!l.length) { toast('Deixe pelo menos 1 botão.'); return; }
+    if (l.some(v => v < 10 || v > 5000)) { toast('Cada botão entre 10 e 5000 ml.'); return; }
+    S.config.copos = l.map(Math.round); salvar('main'); fecharSheet(); render(); toast('Botões de água salvos');
+  },
+  // --- atividades ao ar livre ---
+  modoTreino: ds => { SUB.modo = ds.v; render(); },
+  novaAtiv: ds => abrirRegistrarAtiv(TIPOS_ATIV[ds.v] ? ds.v : (ATIV[0] && ATIV[0].tipo) || (estilo() === 'arlivre' ? 'corrida' : 'caminhada')),
+  verAtiv: ds => abrirDetalheAtiv(ds.id),
+  editarAtiv: ds => { fecharSheet(); abrirRegistrarAtiv(null, ds.id); },
+  ativTipo: ds => { topo().st.tipo = ds.v; redesenharSheet(); },
+  salvarAtiv: () => {
+    const t = topo(), st = t.st, { dur, km } = t.calc(), T = TIPOS_ATIV[st.tipo];
+    if (!dur || dur < 60) { toast('Informe a duração (pelo menos 1 minuto).'); return; }
+    if (dur > 24 * 3600) { toast('Duração acima de 24 horas: confira.'); return; }
+    if (num(st.km) != null && num(st.km) < 0) { toast('Distância inválida.'); return; }
+    if (km && km / (dur / 3600) > T.velMax) { toast(`Velocidade de ${nf(km / (dur / 3600), 1)} km/h não parece de ${T.t.toLowerCase()}: confira tempo e distância.`); return; }
+    if (!st.d || st.d > hojeISO()) { toast('Data inválida.'); return; }
+    const [hh, mm] = (st.hora || '07:00').split(':').map(Number), ini = parseISO(st.d); ini.setHours(hh || 0, mm || 0, 0, 0);
+    const a = { id: t.orig ? t.orig.id : novoId(), tipo: st.tipo, ini: ini.getTime(), dur, km: km ? Math.round(km * 100) / 100 : 0, kcal: kcalAtiv(st.tipo, dur, km, pesoAtual()), origem: t.orig ? t.orig.origem : 'manual', notas: (st.notas || '').trim() };
+    if (t.orig && t.orig.pontos) a.pontos = t.orig.pontos;
+    const recAntes = recordesAtiv().map(r => r[1] + r[2].v);
+    ATIV = ATIV.filter(x => x.id !== a.id).concat(a).sort((x, y) => y.ini - x.ini);
+    salvar('ativ:' + a.id); fecharTodas(); render();
+    const novo = recordesAtiv().find(r => r[2].a.id === a.id && !recAntes.includes(r[1] + r[2].v));
+    toast(novo ? `🏆 Novo recorde: ${novo[1]}!` : `${T.em} ${T.t} salva!`);
+  },
+  apagarAtiv: async ds => { if (!(await confirmar('Apagar esta atividade?', 'Apagar'))) return; ATIV = ATIV.filter(a => a.id !== ds.id); salvar('ativ:' + ds.id); fecharTodas(); render(); },
+  cfgAtiv: () => abrirCfgAtiv(),
+  salvarCfgAtiv: () => {
+    const v = num(topo().st.metaKm);
+    if (v != null && (v <= 0 || v > 2000)) { toast('Meta entre 1 e 2000 km.'); return; }
+    S.config.metaKm = v ? r1(v) : null; salvar('main'); fecharSheet(); render(); toast('Salvo');
+  },
+  ritmoTipo: ds => { SUB.ritmo = ds.v; render(); },
   tomarSupl: ds => {
     const d = getDia(DIA), s = S.suplementos.find(x => x.id === ds.id); d.supl = d.supl || {};
     if (d.supl[s.id]) { delete d.supl[s.id]; if (s.estoque != null && s.estoque !== '') s.estoque++; }
@@ -1976,7 +2268,7 @@ const A = {
     const st = topo().st;
     st.altura = num(st.altura); st.metaPeso = num(st.metaPeso); st.atividade = Number(st.atividade);
     if (!st.nome.trim() || !st.altura || st.altura < 120 || st.altura > 230 || !st.nasc) { toast('Confira nome, altura e nascimento.'); return; }
-    S.perfil = { ...S.perfil, ...st, nome: st.nome.trim() }; salvar('main'); fecharSheet(); render(); toast('Perfil atualizado');
+    S.perfil = { ...S.perfil, ...st, nome: st.nome.trim() }; SUB.modo = null; salvar('main'); fecharSheet(); render(); toast('Perfil atualizado');
   },
   editarMetas: () => abrirEditarMetas(),
   metasModo: ds => { topo().st.auto = ds.v === '1'; redesenharSheet(); },
@@ -2040,6 +2332,10 @@ const I = {
   metaCampo: (ds, el) => { const t = topo(); t.st[ds.k] = el.value; const k = $('#meta-kcal'); if (k) k.textContent = t.kc() + ' kcal'; },
   refCampo: (ds, el) => { const st = topo().st; st.l[Number(ds.i)][ds.k] = el.value; const s = st.l.reduce((a, r) => a + (Number(r.pct) || 0), 0), e = $('#ref-soma'); if (e) { e.textContent = `Soma: ${s}% ${s === 100 ? '✓' : '(o ideal é 100%)'}`; e.className = 'small mb ' + (s === 100 ? 'ac' : 'warn'); } },
   suplCampo: (ds, el) => { topo().st[ds.k] = el.value; },
+  ativCampo: (ds, el) => { const t = topo(); t.st[ds.k] = el.value; const p = $('#ativ-prev'); if (p) p.innerHTML = t.prev(); },
+  cfgAtivCampo: (ds, el) => { topo().st[ds.k] = el.value; },
+  aguaCampo: (ds, el) => { topo().st.ml = el.value; },
+  coposCampo: (ds, el) => { topo().st.l[Number(ds.i)] = el.value; },
   cfgDescanso: (ds, el) => { S.config.descanso = Number(el.value); salvar('main'); },
 };
 document.addEventListener('click', e => {
@@ -2057,6 +2353,7 @@ document.addEventListener('input', aoDigitar);
 document.addEventListener('change', e => { if (e.target.tagName === 'SELECT') aoDigitar(e); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'scan-cod') buscarCodigo(e.target.value);
+  if (e.key === 'Enter' && e.target.id === 'agua-ml') A.aguaOutroOk();
   if (e.key === 'Escape' && PILHA.length) fecharSheet();
 });
 $('#arquivo-foto').addEventListener('change', async e => {
@@ -2148,7 +2445,7 @@ async function iniciar() {
     if (u) {
       USER = { uid: u.uid, email: u.email, nome: u.displayName || NOME_CADASTRO };
       await carregar(); entrarApp();
-    } else { USER = null; S = null; D = {}; SESS = []; $('#app').classList.add('hidden'); mostrarAuth('entrar'); }
+    } else { USER = null; S = null; D = {}; SESS = []; ATIV = []; $('#app').classList.add('hidden'); mostrarAuth('entrar'); }
   });
 }
 // Ao voltar para o app num novo dia, a tela Hoje passa para a data atual

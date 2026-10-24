@@ -1,6 +1,6 @@
 rules_version = '2';
 // GymFlow: cada usuário lê e escreve apenas o próprio documento users/{uid}
-// e as subcoleções dele (dias, sessoes, fotos). Todo o resto é bloqueado.
+// e as subcoleções dele (dias, sessoes, atividades, fotos). Todo o resto é bloqueado.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid} {
