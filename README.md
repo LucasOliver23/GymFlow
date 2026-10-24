@@ -8,6 +8,7 @@ App PWA (instalável no celular) que junta **dieta, treino e evolução** em um 
 |---|---|
 | **Hoje** | Semana com ✓ nos dias treinados, sequência 🔥, anel de calorias restantes, barras de macros, treino do dia, água com botões configuráveis (padrão 250 ml, 500 ml, 600 ml e 1 L), "Outro" valor e desfazer o último registro, atividade do dia com barra da meta semanal de km, suplementos com controle de estoque e aviso de "hora de repor", refeições com meta própria, peso atual |
 | **Dieta** | 597 alimentos da **tabela TACO (UNICAMP)**, busca sem acento, filtro por categoria, recentes, alimentos do rótulo, **leitor de código de barras** (Open Food Facts), refeições favoritas, copiar refeição/dia anterior, distribuição P/C/G, fibras e sódio. Quando a fonte não tem o dado, o app mostra **"não encontrado"** (nada é inventado) |
+| **Cardápio** | Cardápio de 7 dias montado na meta de calorias: 64 receitas brasileiras (`dados/receitas.js`) com ingredientes da TACO em gramas, porções ajustadas a cada refeição, botão Trocar, "Comi isso" lança a receita no diário, preferências (não como ovo, peixe, carne, porco, frango, leite, vegetariano + "Não gosto" por ingrediente, com troca por equivalente), lista de compras com quantidades cruas e compartilhamento, dicas por refeição e seção de dicas baseadas no Guia Alimentar para a População Brasileira (`dados/dicas.js`) |
 | **Treino** | 118 exercícios em 13 grupos, 4 modelos prontos (ABC, Full body, Superior/Inferior, Push/Pull/Legs), editor de fichas, rodízio automático do próximo treino, modo treino com série/peso/reps, carga da última vez preenchida, cronômetro de descanso (som + vibração), **recordes automáticos** (1RM de Epley), link para vídeo de execução, histórico e gráfico por exercício |
 | **Ar livre** | Caminhada, corrida e bike: **GPS no app Android** (mede com a tela desligada, notificação fixa, pausa automática, aviso por voz a cada km, parciais por km e mapa do percurso no resumo) ou registro manual de tempo e distância, ritmo (min/km) ou velocidade (km/h na bike), calorias estimadas (Compendium of Physical Activities), meta semanal de km. Quem escolhe o estilo "Ar livre" no cadastro vê o app sem fichas de academia; "Os dois" alterna Academia e Ar livre na aba Treino |
 | **Evolução** | Peso com gráfico, meta, IMC, tendência semanal e previsão de quando chega na meta; atividades com totais da semana e do mês, km por semana, gráfico de ritmo e recordes (5 km, 10 km, maior distância, maior pedalada); 12 medidas corporais com Top 3 mudanças e **% de gordura estimado** (Marinha dos EUA); evolução de carga e volume por grupo muscular; fotos de progresso com **antes × depois**; conquistas de academia, dieta e ar livre |
@@ -22,6 +23,8 @@ index.html           App completo (HTML + CSS + JS)
 firebase-config.js   Chaves do Firebase (vazio = modo local)
 dados/taco.js        Tabela TACO 4ª ed. (gerada do CSV oficial, não editar à mão)
 dados/exercicios.js  Biblioteca de exercícios e modelos de ficha
+dados/receitas.js    Receitas do cardápio (ingredientes TACO em gramas, classes de troca)
+dados/dicas.js       Dicas de alimentação (Guia Alimentar, Ministério da Saúde)
 manifest.json, sw.js, icons/   PWA instalável e offline
 firestore.rules      Regras de segurança do Firestore
 vercel.json          Cabeçalhos para o deploy

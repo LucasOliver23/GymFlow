@@ -273,6 +273,8 @@ body.oculto .sens{filter:blur(7px);user-select:none}
 <script src="firebase-config.js"></script>
 <script src="dados/taco.js"></script>
 <script src="dados/exercicios.js"></script>
+<script src="dados/receitas.js"></script>
+<script src="dados/dicas.js"></script>
 <script>
 'use strict';
 /* =====================================================================
@@ -400,7 +402,7 @@ let FOTOS = null;          // carregadas sob demanda
 let SA = null;             // sessão de treino em andamento
 let VIEW = 'hoje';
 let DIA = hojeISO();
-const SUB = { treino: 'fichas', evo: 'corpo', modo: null, ritmo: 'corrida' };
+const SUB = { treino: 'fichas', evo: 'corpo', modo: null, ritmo: 'corrida', dieta: 'diario' };
 const ABERTAS = new Set(); // refeições expandidas na tela Hoje
 
 const REFEICOES_PADRAO = [
@@ -1057,6 +1059,7 @@ function cardPesoMini() {
 
 // ======================= DIETA =======================
 function listaRefeicoes(t, m, compacto) {
+  if (compacto && S.prefs) garantirCardapio(); // sugestões do cardápio na tela Hoje
   return S.refeicoes.map(r => {
     const itens = (D[DIA] && D[DIA].ref && D[DIA].ref[r.id]) || [];
     const meta = Math.round(m.kcal * r.pct / 100), k = Math.round(t.porRef[r.id] || 0);
@@ -1064,12 +1067,19 @@ function listaRefeicoes(t, m, compacto) {
     return `<div class="ref"><div class="row sb">
       <button class="grow" style="text-align:left" data-act="toggleRef" data-id="${r.id}"><div class="row sb"><b>${esc(r.nome)}</b><span class="small sub"><b style="color:var(--txt)">${nf(k)}</b> / ${nf(meta)} kcal</span></div><div class="mt" style="margin-top:8px">${barra(k / meta, k > meta * 1.15 ? 'var(--warn)' : '')}</div></button>
       <button class="mais" data-act="addAlim" data-ref="${r.id}" aria-label="Adicionar em ${esc(r.nome)}">${ic('mais', 20, 2.6)}</button></div>
+      ${compacto && !itens.length && S.prefs && DIA <= hojeISO() ? (() => { const sg = sugestao(DIA, r); return sg ? `<button class="row sb small" style="width:100%;text-align:left;margin-top:10px;padding:10px 12px;background:var(--card2);border-radius:12px;gap:8px" data-act="verReceita" data-d="${DIA}" data-ref="${r.id}"><span class="grow ellipsis">💡 <span class="sub">Sugestão:</span> ${esc(sg.R.nome)}</span><b>${nf(sg.kcal)} kcal</b></button>` : ''; })() : ''}
       ${aberto && itens.length ? `<div class="itens">${itens.map(i => `<button class="item" style="width:100%;text-align:left" data-act="editItem" data-ref="${r.id}" data-id="${i.id}"><div class="grow"><div class="t ellipsis">${esc(i.nome)}</div><div class="d">${nf(i.gr)} g · P ${nf(i.p, 1)} · C ${nf(i.c, 1)} · G ${nf(i.g, 1)} ${FONTE[i.fonte] || ''}</div></div><b class="small">${i.kcal == null ? '<span class="badge nf">kcal não encontrado</span>' : nf(i.kcal) + ' kcal'}</b></button>`).join('')}</div>` : ''}
       ${!compacto ? `<div class="row mt" style="gap:6px;flex-wrap:wrap"><button class="btn sec peq" data-act="copiarRef" data-ref="${r.id}">${ic('copiar', 14)} Copiar de ontem</button>${itens.length ? `<button class="btn sec peq" data-act="salvarCombo" data-ref="${r.id}">${ic('estrela', 14)} Salvar favorita</button>` : ''}${S.combos.length ? `<button class="btn sec peq" data-act="usarCombo" data-ref="${r.id}">Favoritas</button>` : ''}</div>` : ''}
     </div>`;
   }).join('');
 }
 function vDieta() {
+  const abas = seg('dieta', [['diario', 'Diário'], ['cardapio', 'Cardápio'], ['dicas', 'Dicas']]);
+  if (SUB.dieta === 'cardapio') return abas + dietaCardapio();
+  if (SUB.dieta === 'dicas') return abas + dietaDicas();
+  return abas + vDiario();
+}
+function vDiario() {
   const m = metasDia(DIA), t = totais(DIA);
   const kc = t.p * 4 + t.c * 4 + t.g * 9 || 1;
   const dist = [['Proteína', t.p * 4 / kc, 'var(--prot)'], ['Carboidrato', t.c * 4 / kc, 'var(--carb)'], ['Gordura', t.g * 9 / kc, 'var(--gord)']];
@@ -1217,6 +1227,225 @@ async function buscarCodigo(cod) {
   } catch (e) {
     res.innerHTML = `<div class="card dois"><span class="badge nf">NÃO ENCONTRADO</span><div class="small sub mt">O código ${esc(cod)} não está na base${navigator.onLine ? '' : ' (você está sem internet)'}. Cadastre a partir do rótulo – na próxima vez ele aparece direto.</div><button class="btn bl mt" data-act="cadastrarCodigo" data-v="${esc(cod)}">Cadastrar este produto</button></div>`;
   }
+}
+
+// ======================= CARDÁPIO (receitas + montador semanal) =======================
+// Receitas em dados/receitas.js (ingredientes TACO em gramas); calorias sempre calculadas pela TACO.
+const TACO_MAP = new Map((window.TACO || []).map(r => [r[0], r]));
+const RECEITAS = window.RECEITAS || [], CLASSES_TROCA = window.CLASSES_TROCA || {}, CRU_DE = window.CRU_DE || {};
+const GRUPOS_ALIM = [['ovo', '🥚 Ovo'], ['peixe', '🐟 Peixe'], ['carne', '🥩 Carne vermelha'], ['porco', '🐖 Porco'], ['frango', '🐔 Frango'], ['leite', '🥛 Leite e derivados'], ['vegetariano', '🥕 Vegetariano']];
+const CARNES = ['peixe', 'carne', 'porco', 'frango'];
+const prefs = () => S.prefs || { exclui: [], naoGosto: [] };
+const kcal100 = id => (TACO_MAP.get(id) || [])[3] || 0;
+const nomeTaco = id => (TACO_MAP.get(id) || [])[1] || String(id);
+// Nome curto para a tela ("Frango, peito, sem pele, grelhado" → "Frango peito sem pele grelhado")
+const nomeCurto = id => nomeTaco(id).replace(/, /g, ' ').replace(/\s+/g, ' ');
+function grupoTaco(id) {
+  const r = TACO_MAP.get(id); if (!r) return null;
+  const n = norm(r[1]);
+  if (r[2] === 8) return 'ovo';
+  if (r[2] === 4) return 'peixe';
+  if (n.includes('frango')) return 'frango';
+  if (n.includes('porco')) return 'porco';
+  if (r[2] === 5) return 'carne';
+  if (r[2] === 6 || n.startsWith('manteiga')) return 'leite';
+  return null;
+}
+function proibido(id) {
+  const p = prefs(), g = grupoTaco(id);
+  if (p.naoGosto.includes(id)) return true;
+  if (g && p.exclui.includes(g)) return true;
+  return p.exclui.includes('vegetariano') && CARNES.includes(g);
+}
+// Aplica as preferências: troca o que a pessoa não come por um item da mesma classe com as mesmas calorias
+function resolverReceita(R) {
+  const ing = [];
+  for (const [id, g, cl] of R.ing) {
+    if (!proibido(id)) { ing.push({ id, g }); continue; }
+    const alt = cl && (CLASSES_TROCA[cl] || []).find(x => x !== id && !proibido(x) && kcal100(x));
+    // mesmas calorias, mas no máximo 1,5x o peso (o ajuste da porção completa a meta)
+    if (alt) { ing.push({ id: alt, g: Math.min(g * 1.5, g * kcal100(id) / kcal100(alt)), de: id }); continue; }
+    if (cl) return null; // ingrediente principal sem troca possível: receita fora
+    // tempero ou acompanhamento sem classe: só sai da receita
+  }
+  return ing.length ? ing : null;
+}
+const somaKcal = ing => ing.reduce((s, i) => s + kcal100(i.id) * i.g / 100, 0);
+const arredG = g => g < 20 ? Math.max(1, Math.round(g)) : Math.round(g / 5) * 5;
+// Porção da receita ajustada para a meta da refeição (de 0,5x a 2x da receita base)
+function porcaoReceita(R, alvo) {
+  const base = resolverReceita(R); if (!base) return null;
+  const K = somaKcal(base); if (!K) return null;
+  const f = Math.max(0.5, Math.min(2, (alvo || K) / K));
+  const ing = base.map(i => ({ ...i, g: arredG(i.g * f) }));
+  const t = { kcal: 0, p: 0, c: 0, g: 0 };
+  for (const i of ing) { const r = TACO_MAP.get(i.id), q = porcao(alimentoTACO(r).por100, i.g); t.kcal += q.kcal || 0; t.p += q.p || 0; t.c += q.c || 0; t.g += q.g || 0; }
+  return { R, ing, f, kcal: Math.round(t.kcal), p: Math.round(t.p), c: Math.round(t.c), gord: Math.round(t.g), trocas: ing.filter(i => i.de) };
+}
+// Tipo de cada refeição do usuário (inclusive as que ele criou e renomeou)
+function tipoRef(ref) {
+  if (ref.id === 'cafe') return 'cafe';
+  if (ref.id === 'almoco' || ref.id === 'jantar') return 'principal';
+  if (ref.id === 'lanche' || ref.id === 'ceia') return 'lanche';
+  const n = norm(ref.nome);
+  if (/cafe|manha|desjejum/.test(n)) return 'cafe';
+  if (/almoc|jant/.test(n)) return 'principal';
+  return (Number(ref.pct) || 0) >= 20 ? 'principal' : 'lanche';
+}
+const metaRef = ref => Math.round(metas().kcal * (Number(ref.pct) || 0) / 100);
+const receitaPorId = id => RECEITAS.find(r => r.id === id);
+const cardapioDaSemana = d => S.cardapio && d >= S.cardapio.ini && d <= addDias(S.cardapio.ini, 6);
+// Escolhe a receita mais próxima da meta, variando (sorteio entre as 3 melhores) e evitando repetir
+function escolherReceita(ref, alvo, evitar = [], usos = {}) {
+  const tipo = tipoRef(ref);
+  const cands = RECEITAS.filter(R => R.tipo === tipo).map(R => {
+    const base = resolverReceita(R); if (!base) return null;
+    const K = somaKcal(base); if (!K) return null;
+    return { R, s: Math.abs(Math.log(alvo / K)) + 0.5 * (usos[R.id] || 0) + (evitar.includes(R.id) ? 3 : 0) };
+  }).filter(Boolean).sort((a, b) => a.s - b.s);
+  if (!cands.length) return null;
+  return cands[Math.floor(Math.random() * Math.min(3, cands.length))].R.id;
+}
+function gerarSemana(ini) {
+  const dias = {}, usos = {};
+  for (let i = 0; i < 7; i++) {
+    const d = addDias(ini, i), ontem = dias[addDias(d, -1)] || {}, hoje = {};
+    for (const ref of S.refeicoes) {
+      const rid = escolherReceita(ref, metaRef(ref), Object.values(ontem).concat(Object.values(hoje)), usos);
+      if (rid) { hoje[ref.id] = rid; usos[rid] = (usos[rid] || 0) + 1; }
+    }
+    dias[d] = hoje;
+  }
+  S.cardapio = { ini, dias, compras: {} };
+  salvar('main');
+}
+// O cardápio cobre 7 dias a partir do dia em que foi montado; acabou, monta o próximo a partir de hoje
+function garantirCardapio() {
+  if (!S.cardapio || hojeISO() > addDias(S.cardapio.ini, 6)) gerarSemana(hojeISO());
+}
+// Receita sugerida para um dia e refeição (preenche o que faltar, ex.: refeição nova ou receita que ficou sem troca)
+function sugestao(d, ref) {
+  if (!cardapioDaSemana(d)) return null;
+  const dia = S.cardapio.dias[d] || (S.cardapio.dias[d] = {});
+  let R = receitaPorId(dia[ref.id]);
+  if (!R || !resolverReceita(R)) {
+    const rid = escolherReceita(ref, metaRef(ref), Object.values(dia));
+    if (!rid) return null;
+    dia[ref.id] = rid; salvar('main'); R = receitaPorId(rid);
+  }
+  return porcaoReceita(R, metaRef(ref));
+}
+const dicaDoDia = (tipo, d) => { const l = (window.DICAS_REFEICAO || {})[tipo] || []; return l.length ? l[(parseISO(d).getDate() + tipo.length) % l.length] : ''; };
+const jaComeu = (d, refId) => !!(D[d] && D[d].card && D[d].card[refId]);
+function comiReceita(d, refId) {
+  const ref = S.refeicoes.find(r => r.id === refId), s = ref && sugestao(d, ref); if (!s) return;
+  const antes = DIA; DIA = d;
+  for (const i of s.ing) addItem(refId, alimentoTACO(TACO_MAP.get(i.id)), i.g);
+  const dd = getDia(d); (dd.card = dd.card || {})[refId] = s.R.id; salvar('dia:' + d);
+  DIA = antes;
+  toast(`${s.R.nome.split(' com ')[0]} lançado em ${ref.nome} · ${nf(s.kcal)} kcal`);
+}
+function listaCompras() {
+  const tot = new Map();
+  for (let i = 0; i < 7; i++) {
+    const d = addDias(S.cardapio.ini, i);
+    for (const ref of S.refeicoes) {
+      const s = sugestao(d, ref); if (!s) continue;
+      for (const it of s.ing) {
+        const cru = CRU_DE[it.id], id = cru || it.id;
+        const g = cru ? it.g * kcal100(it.id) / kcal100(cru) : it.g; // pronto → cru pela energia (TACO)
+        tot.set(id, (tot.get(id) || 0) + g);
+      }
+    }
+  }
+  const cats = window.TACO_CATEGORIAS || [];
+  const grupos = {};
+  for (const [id, g] of tot) { const c = cats[(TACO_MAP.get(id) || [])[2]] || 'Outros'; (grupos[c] = grupos[c] || []).push({ id, g }); }
+  for (const l of Object.values(grupos)) l.sort((a, b) => nomeTaco(a.id).localeCompare(nomeTaco(b.id)));
+  return grupos;
+}
+const fmtPeso = g => g >= 1000 ? nf(g / 1000, 2).replace(/0$/, '') + ' kg' : Math.round(g / 10) * 10 + ' g';
+
+function dietaCardapio() {
+  if (!S.prefs) return `<div class="card"><h3>Vamos montar seu cardápio</h3><p class="small sub">Receitas da semana dentro da sua meta de <b>${nf(metas().kcal)} kcal</b>. Antes, marque o que você <b>não come</b>:</p>
+    <div class="chips mt" style="flex-wrap:wrap">${GRUPOS_ALIM.map(([k, t]) => `<button class="chip ${(SUB.prefIni || []).includes(k) ? 'on' : ''}" data-act="prefIni" data-v="${k}">${t}</button>`).join('')}</div>
+    <p class="tiny mut mt">Depois, em cada receita, dá para tocar em "Não gosto" num ingrediente e ele é trocado por outro.</p>
+    <button class="btn bl mt" data-act="criarCardapio">Montar meu cardápio</button></div>`;
+  garantirCardapio();
+  const ini = S.cardapio.ini, h = hojeISO();
+  const sel = cardapioDaSemana(SUB.cardDia || '') ? SUB.cardDia : (cardapioDaSemana(h) ? h : ini);
+  let tot = 0;
+  const refs = S.refeicoes.map(ref => {
+    const s = sugestao(sel, ref), alvo = metaRef(ref);
+    if (!s) return `<div class="card"><div class="lbl">${esc(ref.nome)}</div><div class="small sub">Nenhuma receita combina com suas preferências para esta refeição.</div></div>`;
+    tot += s.kcal;
+    const feito = jaComeu(sel, ref.id);
+    return `<div class="card"><div class="row sb"><div class="lbl">${esc(ref.nome)} · ${nf(alvo)} kcal</div>${feito ? `<span class="small ac">${ic('check', 14, 3)} registrado</span>` : ''}</div>
+      <button style="display:block;width:100%;text-align:left" data-act="verReceita" data-d="${sel}" data-ref="${ref.id}"><h3 class="mt" style="margin-top:6px">${esc(s.R.nome)}</h3>
+      <div class="small sub">${nf(s.kcal)} kcal · P ${s.p} g · C ${s.c} g · G ${s.gord} g · ${s.R.min} min${s.trocas.length ? ' · <span class="warn">com trocas</span>' : ''}</div></button>
+      <div class="tiny mut mt">💡 ${esc(dicaDoDia(tipoRef(ref), sel))}</div>
+      <div class="row mt" style="gap:8px"><button class="btn sec peq" data-act="trocarReceita" data-d="${sel}" data-ref="${ref.id}">${ic('troca', 14)} Trocar</button><button class="btn sec peq" data-act="verReceita" data-d="${sel}" data-ref="${ref.id}">Ver receita</button>
+      ${sel <= h && !feito ? `<button class="btn peq grow" data-act="comiReceita" data-d="${sel}" data-ref="${ref.id}">${ic('check', 14)} Comi isso</button>` : ''}</div></div>`;
+  }).join('');
+  const m = metas();
+  return `<div class="card"><div class="row sb"><div><div class="lbl">Cardápio de 7 dias</div><b>${fmtData(ini)} a ${fmtData(addDias(ini, 6))}</b></div><div class="r"><div class="lbl">Meta</div><b class="ac">${nf(m.kcal)} kcal</b></div></div>
+    <div class="mt" style="display:flex;gap:6px">${Array.from({ length: 7 }, (_, i) => { const d = addDias(ini, i), x = parseISO(d); return `<button class="chip ${d === sel ? 'on' : ''}" style="flex:1;justify-content:center;padding:8px 0;flex-direction:column;gap:0" data-act="cardDia" data-d="${d}"><span class="tiny">${DIAS_CURTO[x.getDay()]}</span><b>${x.getDate()}</b></button>`; }).join('')}</div></div>
+  <div class="row sb small sub mb" style="padding:0 4px"><span>${tituloData(sel)}</span><span>Total do dia: <b style="color:var(--txt)">${nf(tot)} kcal</b></span></div>
+  ${refs}
+  <div class="grid2"><button class="btn sec" data-act="listaCompras">${ic('nota', 16)} Lista de compras</button><button class="btn sec" data-act="prefsAlim">${ic('engrenagem', 16)} Preferências</button></div>
+  <button class="btn ghost bl mt" data-act="novaSemana">${ic('troca', 16)} Montar outra semana</button>
+  <p class="tiny mut c mt2">Calorias calculadas pela Tabela TACO (NEPA/UNICAMP) e porções ajustadas à sua meta. Sugestões gerais: não substituem nutricionista.</p>`;
+}
+function dietaDicas() {
+  return `<p class="small sub" style="margin-top:0">Dicas baseadas no ${esc(window.FONTE_DICAS || 'Guia Alimentar para a População Brasileira')}.</p>`
+    + (window.DICAS_GERAIS || []).map(x => `<div class="card"><div class="row" style="align-items:flex-start;gap:12px"><span style="font-size:28px">${x.em}</span><div><b>${esc(x.t)}</b><div class="small sub mt" style="margin-top:4px">${esc(x.txt)}</div></div></div></div>`).join('');
+}
+function abrirReceita(d, refId) {
+  const ref = S.refeicoes.find(r => r.id === refId);
+  abrirSheet({
+    cls: 'alto', d, refId,
+    render: () => {
+      const s = sugestao(d, ref); if (!s) return `${cabecalho('Receita')}<div class="vazio">Sem receita compatível com suas preferências.</div>`;
+      const feito = jaComeu(d, refId);
+      return `${cabecalho(esc(s.R.nome))}
+        <div class="small sub" style="margin-top:-4px">${esc(ref.nome)} · ${tituloData(d)} · ${s.R.min} min</div>
+        <div class="grid3 mt">${[['Calorias', nf(s.kcal), 'kcal'], ['Proteína', s.p, 'g'], ['Carbo / Gord.', s.c + ' / ' + s.gord, 'g']].map(([t, v, u]) => `<div class="card dois c" style="margin:0;padding:10px 6px"><div class="tiny sub">${t}</div><b style="font-size:18px">${v}</b><div class="tiny sub">${u}</div></div>`).join('')}</div>
+        ${s.trocas.length ? `<div class="small warn mt">Trocas pelas suas preferências: ${s.trocas.map(t => esc(nomeCurto(t.id).split(' ')[0]) + ' no lugar de ' + esc(nomeCurto(t.de).split(' ')[0].toLowerCase())).join('; ')}.</div>` : ''}
+        <h4 class="mt2 mb">Ingredientes</h4>
+        <div class="card dois" style="padding:4px 12px">${s.ing.map(i => `<div class="row sb" style="padding:9px 0;border-bottom:1px solid var(--line);gap:8px"><div class="grow small">${esc(nomeCurto(i.id))}</div><b class="small">${i.g} g</b><button class="chip" style="padding:5px 9px;font-size:11.5px" data-act="naoGosto" data-id="${i.id}">Não gosto</button></div>`).join('')}</div>
+        <p class="tiny mut">Pesos do alimento pronto (cozido, grelhado), como na TACO. Sal e temperos a gosto.</p>
+        <h4 class="mt2 mb">Modo de preparo</h4>
+        <ol class="small" style="padding-left:20px;margin:0">${s.R.prep.map(p => `<li style="margin-bottom:6px">${esc(p)}</li>`).join('')}</ol>
+        <div class="tiny mut mt">💡 ${esc(dicaDoDia(tipoRef(ref), d))}</div>
+        <div class="row mt2"><button class="btn sec" data-act="trocarReceita" data-d="${d}" data-ref="${refId}">${ic('troca', 16)} Trocar</button>
+        ${d <= hojeISO() && !feito ? `<button class="btn grow" data-act="comiReceita" data-d="${d}" data-ref="${refId}">${ic('check', 16)} Comi isso</button>` : feito ? '<span class="small ac grow c">✓ Já registrado no diário</span>' : ''}</div>`;
+    },
+  });
+}
+function abrirListaCompras() {
+  abrirSheet({
+    cls: 'alto',
+    render: () => {
+      const g = listaCompras(), marc = S.cardapio.compras || {};
+      const total = Object.values(g).reduce((s, l) => s + l.length, 0), feitos = Object.values(g).flat().filter(x => marc[x.id]).length;
+      return `${cabecalho('Lista de compras', `<button class="icone-btn" data-act="compartilharCompras" aria-label="Compartilhar">${ic('upload', 18)}</button>`)}
+        <div class="small sub" style="margin-top:-4px">Semana de ${fmtData(S.cardapio.ini)} a ${fmtData(addDias(S.cardapio.ini, 6))} · ${feitos}/${total} no carrinho</div>
+        ${Object.entries(g).map(([c, l]) => `<h4 class="mt2 mb">${esc(c)}</h4><div class="card dois" style="padding:2px 12px">${l.map(x => `<button class="row sb" style="width:100%;padding:10px 0;border-bottom:1px solid var(--line);text-align:left;gap:10px;${marc[x.id] ? 'opacity:.45' : ''}" data-act="marcarCompra" data-id="${x.id}"><span style="width:22px;height:22px;border-radius:7px;border:2px solid ${marc[x.id] ? 'var(--ac)' : 'var(--line)'};background:${marc[x.id] ? 'var(--ac)' : 'transparent'};display:grid;place-items:center;color:#000;flex:none">${marc[x.id] ? ic('check', 14, 3) : ''}</span><span class="grow small" style="${marc[x.id] ? 'text-decoration:line-through' : ''}">${esc(nomeCurto(x.id))}</span><b class="small">${fmtPeso(x.g)}</b></button>`).join('')}</div>`).join('')}
+        <p class="tiny mut mt">Quantidades da semana inteira, já somadas. Arroz, feijão, carnes e legumes aparecem crus (convertidos pela TACO).</p>`;
+    },
+  });
+}
+function abrirPrefsAlim() {
+  abrirSheet({
+    cls: 'alto',
+    render: () => { const p = prefs(); return `${cabecalho('Preferências alimentares')}
+      <div class="lbl mb">Não como</div>
+      <div class="chips" style="flex-wrap:wrap">${GRUPOS_ALIM.map(([k, t]) => `<button class="chip ${p.exclui.includes(k) ? 'on' : ''}" data-act="prefGrupo" data-v="${k}">${t}</button>`).join('')}</div>
+      <div class="lbl mb mt2">Não gosto (toque para tirar da lista)</div>
+      ${p.naoGosto.length ? `<div class="chips" style="flex-wrap:wrap">${p.naoGosto.map(id => `<button class="chip" data-act="prefTirar" data-id="${id}">${esc(nomeCurto(id))} ${ic('x', 12)}</button>`).join('')}</div>` : '<div class="small sub">Nada ainda. Nas receitas, toque em "Não gosto" num ingrediente.</div>'}
+      <p class="tiny mut mt2">As trocas usam um alimento do mesmo tipo com as mesmas calorias (pela TACO). Se você tem alergia ou restrição médica, confirme os ingredientes com seu nutricionista.</p>`; },
+    aoFechar: () => render(),
+  });
 }
 
 // ======================= TREINO =======================
@@ -1967,6 +2196,7 @@ function vPerfil() {
   <div class="card">
     <button class="item" style="width:100%" data-act="editarRefeicoes">${ic('dieta', 20)}<div class="grow" style="text-align:left"><div class="t">Refeições do dia</div><div class="d">${S.refeicoes.map(r => esc(r.nome)).join(', ')}</div></div>${ic('dir', 18)}</button>
     <button class="item" style="width:100%" data-act="suplementos">${ic('pilula', 20)}<div class="grow" style="text-align:left"><div class="t">Suplementos e estoque</div><div class="d">${S.suplementos.length ? S.suplementos.map(s => esc(s.nome)).join(', ') : 'Nenhum cadastrado'}</div></div>${ic('dir', 18)}</button>
+    <button class="item" style="width:100%" data-act="prefsAlim">${ic('dieta', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências alimentares</div><div class="d">${S.prefs && (S.prefs.exclui.length || S.prefs.naoGosto.length) ? esc([...S.prefs.exclui.map(k => (GRUPOS_ALIM.find(g => g[0] === k) || [k, k])[1].replace(/^\S+ /, '')), ...S.prefs.naoGosto.map(id => nomeCurto(id).split(' ')[0])].join(', ')) : 'O que você não come, para o cardápio'}</div></div>${ic('dir', 18)}</button>
     <button class="item" style="width:100%" data-act="copos">${ic('gota', 20)}<div class="grow" style="text-align:left"><div class="t">Botões de água</div><div class="d">${S.config.copos.map(fmtMl).join(' · ')} · e "Outro"</div></div>${ic('dir', 18)}</button>
     ${usaArLivre() ? `<button class="item" style="width:100%" data-act="cfgAtiv">${ic('corrida', 20)}<div class="grow" style="text-align:left"><div class="t">Atividades ao ar livre</div><div class="d">${S.config.metaKm ? 'Meta de ' + nf(S.config.metaKm, 1) + ' km por semana' : 'Sem meta semanal'} · calorias ${S.perfil.atividade === 1.2 && S.config.somarAtiv ? 'somam na meta' : 'só no resumo'}</div></div>${ic('dir', 18)}</button>` : ''}
     <button class="item" style="width:100%" data-act="config">${ic('engrenagem', 20)}<div class="grow" style="text-align:left"><div class="t">Preferências do treino</div><div class="d">Descanso padrão ${S.config.descanso}s · som ${S.config.som ? 'ligado' : 'desligado'} · vibração ${S.config.vibrar ? 'ligada' : 'desligada'}</div></div>${ic('dir', 18)}</button>
@@ -2221,6 +2451,38 @@ const A = {
     if (l.some(v => v < 10 || v > 5000)) { toast('Cada botão entre 10 e 5000 ml.'); return; }
     S.config.copos = l.map(Math.round); salvar('main'); fecharSheet(); render(); toast('Botões de água salvos');
   },
+  // --- cardápio ---
+  prefIni: ds => { const l = SUB.prefIni = SUB.prefIni || []; const i = l.indexOf(ds.v); i >= 0 ? l.splice(i, 1) : l.push(ds.v); render(); },
+  criarCardapio: () => { S.prefs = { exclui: [...(SUB.prefIni || [])], naoGosto: [] }; gerarSemana(hojeISO()); render(); toast('Cardápio da semana pronto! 🍽️'); },
+  cardDia: ds => { SUB.cardDia = ds.d; render(); },
+  verReceita: ds => abrirReceita(ds.d, ds.ref),
+  trocarReceita: ds => {
+    const ref = S.refeicoes.find(r => r.id === ds.ref), dia = S.cardapio.dias[ds.d] || (S.cardapio.dias[ds.d] = {});
+    const rid = escolherReceita(ref, metaRef(ref), Object.values(dia));
+    if (rid && rid !== dia[ref.id]) { dia[ref.id] = rid; salvar('main'); }
+    PILHA.length ? redesenharSheet() : null; render();
+  },
+  comiReceita: ds => { comiReceita(ds.d, ds.ref); PILHA.length ? redesenharSheet() : null; render(); },
+  naoGosto: ds => {
+    const id = Number(ds.id); S.prefs = S.prefs || { exclui: [], naoGosto: [] };
+    if (!S.prefs.naoGosto.includes(id)) S.prefs.naoGosto.push(id);
+    salvar('main'); redesenharSheet(); render(); toast(`Anotado: sem ${nomeCurto(id).split(' ')[0].toLowerCase()} nas próximas sugestões`);
+  },
+  listaCompras: () => abrirListaCompras(),
+  marcarCompra: ds => { const c = S.cardapio.compras = S.cardapio.compras || {}; c[ds.id] ? delete c[ds.id] : c[ds.id] = true; salvar('main'); redesenharSheet(); },
+  compartilharCompras: async () => {
+    const g = listaCompras(), marc = S.cardapio.compras || {};
+    const txt = `🛒 Lista de compras GymFlow (${fmtData(S.cardapio.ini)} a ${fmtData(addDias(S.cardapio.ini, 6))})\n` + Object.entries(g).map(([c, l]) => `\n*${c}*\n` + l.map(x => `${marc[x.id] ? '✅' : '▫️'} ${nomeCurto(x.id)}: ${fmtPeso(x.g)}`).join('\n')).join('\n');
+    try {
+      if (NATIVO && PLUG.Share) await PLUG.Share.share({ title: 'Lista de compras', text: txt, dialogTitle: 'Enviar lista de compras' });
+      else if (navigator.share) await navigator.share({ title: 'Lista de compras', text: txt });
+      else { await navigator.clipboard.writeText(txt); toast('Lista copiada: cole no WhatsApp'); }
+    } catch (e) { if (!/cancel|abort/i.test(String(e && (e.name + e.message)))) toast('Não foi possível compartilhar.'); }
+  },
+  prefsAlim: () => abrirPrefsAlim(),
+  prefGrupo: ds => { S.prefs = S.prefs || { exclui: [], naoGosto: [] }; const l = S.prefs.exclui, i = l.indexOf(ds.v); i >= 0 ? l.splice(i, 1) : l.push(ds.v); salvar('main'); redesenharSheet(); },
+  prefTirar: ds => { S.prefs.naoGosto = S.prefs.naoGosto.filter(x => x !== Number(ds.id)); salvar('main'); redesenharSheet(); },
+  novaSemana: async () => { if (!(await confirmar('Montar outro cardápio a partir de hoje? O atual será substituído.', 'Montar', false))) return; gerarSemana(hojeISO()); SUB.cardDia = hojeISO(); render(); toast('Novo cardápio pronto!'); },
   // --- atividades ao ar livre ---
   modoTreino: ds => { SUB.modo = ds.v; render(); },
   novaAtiv: ds => abrirRegistrarAtiv(TIPOS_ATIV[ds.v] ? ds.v : (ATIV[0] && ATIV[0].tipo) || (estilo() === 'arlivre' ? 'corrida' : 'caminhada')),
@@ -2568,14 +2830,14 @@ async function agendarAvisoDescanso() {
   try { await LN.schedule({ notifications: [{ id: 7001, title: 'Descanso acabou ⏱', body: 'Bora para a próxima série 💪', schedule: { at: new Date(RT.fim), allowWhileIdle: true } }] }); } catch (e) { }
 }
 function cancelarAvisoDescanso() { const LN = PLUG.LocalNotifications; if (LN) LN.cancel({ notifications: [{ id: 7001 }] }).catch(() => { }); }
-// Aviso de APK novo (modo embutido). No modo online (APP_URL) o conteúdo já atualiza sozinho a cada deploy.
+// Aviso de APK novo. Confere a cada 15 minutos (e ao voltar para o app).
 async function verificarAtualizacao() {
   if (!NATIVO || !PLUG.App) return;
   try {
     const info = await PLUG.App.getInfo(); VERSAO_APP = info.version;
-    if (location.hostname !== 'localhost') return;
+    // Vale nos dois modos: no online as telas já se atualizam pela Vercel, mas o código nativo (GPS) só muda com APK novo
     let rel = null; try { rel = JSON.parse(localStorage.getItem('gf_upd') || 'null'); } catch (e) { }
-    if (!rel || Date.now() - rel.ts > 3 * 3600e3) {
+    if (!rel || Date.now() - rel.ts > 15 * 60e3) {
       const r = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, { headers: { Accept: 'application/vnd.github+json' } });
       if (!r.ok) return;
       const j = await r.json(), apk = (j.assets || []).find(a => /\.apk$/i.test(a.name));
